@@ -53,7 +53,47 @@ npm start
 | 管理成员 | ✅ | ❌ | ❌ |
 | 设置权限 | ✅ | ❌ | ❌ |
 
-## 部署
+## Docker 部署（推荐）
+
+### 直接拉镜像
+
+```bash
+docker run -d \
+  --name map-editor \
+  -p 3456:3456 \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  ghcr.io/bemlyyyyyyyyyyyy/collab-map-editor:latest
+```
+
+### docker-compose
+
+```yaml
+# docker-compose.yml
+services:
+  map-editor:
+    image: ghcr.io/bemlyyyyyyyyyyyy/collab-map-editor:latest
+    ports:
+      - "3456:3456"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+```bash
+docker compose up -d
+```
+
+### 自己构建
+
+```bash
+git clone https://github.com/bemlyyyyyyyyyyyy/collab-map-editor.git
+cd collab-map-editor
+docker build -t collab-map-editor .
+docker run -d -p 3456:3456 -v $(pwd)/data:/app/data collab-map-editor
+```
+
+## 传统部署
 
 在同一局域网内，其他设备可通过 `http://服务器IP:3456` 访问。
 如需公网访问，建议使用 Nginx 反向代理 + TLS。

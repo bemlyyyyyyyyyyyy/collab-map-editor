@@ -1,0 +1,8 @@
+services:
+  map-editor:
+    build: .
+    ports:
+      - "3456:3456"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
