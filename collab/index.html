@@ -1,0 +1,2687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多人协作地图编辑器 - 9000×9000</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ─── Login Panel ─── */
+        .login-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .login-overlay.hidden { display: none; }
+        .login-box {
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 30px;
+            width: 380px;
+            max-width: 90vw;
+        }
+        .login-box h1 {
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .login-box .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .login-box .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            border: none;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.6);
+            transition: all 0.2s;
+        }
+        .login-box .tab.active {
+            background: rgba(0,212,255,0.2);
+            color: #fff;
+        }
+        .login-box .form-group {
+            margin-bottom: 14px;
+        }
+        .login-box .form-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: rgba(255,255,255,0.7);
+        }
+        .login-box .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        .login-box .form-group input:focus {
+            border-color: #00d4ff;
+        }
+        .login-box .btn-full {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .login-box .btn-join {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #000;
+        }
+        .login-box .btn-create {
+            background: linear-gradient(135deg, #7b2ff7, #5a1fcc);
+            color: #fff;
+        }
+        .login-box .btn-full:hover { transform: translateY(-1px); }
+        .login-box .perms-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding: 3px 0;
+        }
+        .login-box .perms-check input { width: 16px; height: 16px; }
+
+        /* ─── Collab Panel ─── */
+        .collab-panel {
+            position: fixed;
+            top: 75px;
+            right: 10px;
+            background: rgba(30,30,50,0.95);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 1001;
+            min-width: 180px;
+            font-size: 11px;
+        }
+        .collab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .collab-room {
+            font-weight: bold;
+            color: #00d4ff;
+            cursor: pointer;
+        }
+        .collab-toggle {
+            background: none; border: none;
+            color: rgba(255,255,255,0.5);
+            cursor: pointer; font-size: 14px;
+        }
+        .collab-body.collapsed { display: none; }
+        .collab-users { margin-bottom: 8px; }
+        .collab-user {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+        }
+        .collab-user-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #2ecc71; flex-shrink: 0;
+        }
+        .collab-role-tag {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: auto;
+        }
+        .collab-role-tag.admin { background: rgba(255,107,107,0.3); color: #ff6b6b; }
+        .collab-role-tag.member { background: rgba(46,204,113,0.3); color: #2ecc71; }
+        .collab-role-tag.viewer { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
+        .collab-my-role {
+            padding: 4px 8px;
+            background: rgba(0,212,255,0.1);
+            border-radius: 4px;
+            margin-bottom: 6px;
+            text-align: center;
+            font-size: 10px;
+        }
+        .collab-btn {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        .collab-btn:hover { background: rgba(0,212,255,0.15); }
+        .collab-btn.admin-only { border-color: rgba(255,107,107,0.3); }
+
+        /* ─── Admin Panel Modal ─── */
+        .admin-member-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .admin-member-row .name { flex: 1; font-size: 12px; }
+        .admin-member-row select {
+            padding: 4px 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: rgba(30,30,50,0.9);
+            color: #fff;
+            font-size: 11px;
+        }
+        .admin-member-row .kick-btn {
+            padding: 3px 8px;
+            border: none;
+            border-radius: 3px;
+            background: rgba(255,107,107,0.3);
+            color: #ff6b6b;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .perm-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+        .perm-row label { font-size: 12px; color: rgba(255,255,255,0.7); }
+        .perm-switch {
+            width: 36px; height: 20px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .perm-switch.on { background: #2ecc71; }
+        .perm-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            transition: left 0.2s;
+        }
+        .perm-switch.on::after { left: 18px; }
+
+        /* ─── Connection Status ─── */
+        .conn-status {
+            position: fixed;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 16px;
+            border-radius: 4px;
+            font-size: 11px;
+            z-index: 10000;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .conn-status.connected { background: rgba(46,204,113,0.2); color: #2ecc71; opacity: 0; }
+        .conn-status.reconnecting { background: rgba(255,152,0,0.3); color: #ff9800; opacity: 1; }
+        .conn-status.disconnected { background: rgba(255,107,107,0.3); color: #ff6b6b; opacity: 1; }
+
+        /* ─── Notification Toast ─── */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 10000;
+            animation: toastIn 0.3s, toastOut 0.3s 2.5s forwards;
+        }
+        .toast.error { background: rgba(255,107,107,0.9); color: #fff; }
+        .toast.info { background: rgba(0,212,255,0.9); color: #000; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <!-- ─── Connection Status ─── -->
+    <div class="conn-status reconnecting" id="connStatus">正在连接服务器...</div>
+
+    <!-- ─── Login Overlay ─── -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h1>多人协作地图编辑器</h1>
+            <div class="tabs">
+                <div class="tab active" id="tabJoin">加入房间</div>
+                <div class="tab" id="tabCreate">创建房间</div>
+            </div>
+            <div id="joinForm">
+                <div class="form-group">
+                    <label>房间码（6位）</label>
+                    <input type="text" id="joinRoomId" placeholder="输入房间码" maxlength="6" style="text-transform:uppercase">
+                </div>
+                <div class="form-group">
+                    <label>密码（可选）</label>
+                    <input type="password" id="joinPassword" placeholder="房间密码">
+                </div>
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" id="joinUsername" placeholder="你的昵称" maxlength="16">
+                </div>
+                <button class="btn-full btn-join" id="btnJoin">加入房间</button>
+            </div>
+            <div id="createForm" style="display:none">
+                <div class="form-group">
+                    <label>房间名称</label>
+                    <input type="text" id="createRoomName" placeholder="给房间起个名字" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label>房间密码（可选）</label>
+                    <input type="password" id="createPassword" placeholder="设置密码保护">
+                </div>
+                <div class="form-group">
+                    <label>Member 权限配置</label>
+                    <div class="perms-check">
+                        <input type="checkbox" id="permPlace" checked>
+                        <span>允许放置物品</span>
+                    </div>
+                    <div class="perms-check">
+                        <input type="checkbox" id="permEdit" checked>
+                        <span>允许编辑物品</span>
+                    </div>
+                    <div class="perms-check">
+                        <input type="checkbox" id="permDelete" checked>
+                        <span>允许删除物品</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" id="createUsername" placeholder="你的昵称" maxlength="16">
+                </div>
+                <button class="btn-full btn-create" id="btnCreate">创建房间</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Map Editor Toolbar (from original) ─── -->
+    <div class="toolbar" id="mainToolbar" style="display:none">
+        <h1>多人协作地图编辑器 - 9000×9000</h1>
+        
+        <div class="mode-switch">
+            <button class="mode-btn active" data-mode="space-station">空间站</button>
+            <div class="mode-dropdown">
+                <button class="mode-btn dropdown-btn" data-mode="building">建筑 ▾</button>
+                <div class="dropdown-content" id="buildingDropdown">
+                    <button class="mode-btn" data-mode="building-10">10×10 建筑</button>
+                    <button class="mode-btn" data-mode="building-20">20×20 建筑</button>
+                </div>
+            </div>
+            <div class="mode-dropdown">
+                <button class="mode-btn dropdown-btn" data-mode="plan-circle">计划圈 ▾</button>
+                <div class="dropdown-content" id="planCircleDropdown">
+                    <button class="mode-btn" data-mode="plan-circle-normal">普通计划圈</button>
+                    <button class="mode-btn" data-mode="plan-circle-blockade">封锁计划圈</button>
+                    <button class="mode-btn" data-mode="plan-circle-warp1">曲率加速计划1级</button>
+                    <button class="mode-btn" data-mode="plan-circle-warp2">曲率加速计划2级</button>
+                    <button class="mode-btn" data-mode="plan-circle-auto1">自动采集计划1级</button>
+                    <button class="mode-btn" data-mode="plan-circle-auto2">自动采集计划2级</button>
+                    <button class="mode-btn" data-mode="plan-circle-defend1">防卫警戒计划1级</button>
+                    <button class="mode-btn" data-mode="plan-circle-defend2">防卫警戒计划2级</button>
+                    <button class="mode-btn" data-mode="plan-circle-space1">空域改造计划1级</button>
+                    <button class="mode-btn" data-mode="plan-circle-space2">空域改造计划2级</button>
+                </div>
+            </div>
+            <button class="mode-btn" data-mode="delegation-circle">委派圈</button>
+            <button class="mode-btn" data-mode="warp-circle">曲率圈</button>
+            <div class="mode-dropdown">
+                <button class="mode-btn dropdown-btn" data-mode="marker">标记 ▾</button>
+                <div class="dropdown-content" id="markerDropdown">
+                    <button class="mode-btn" data-mode="marker-rally">集合点</button>
+                    <button class="mode-btn" data-mode="marker-resource">资源点</button>
+                    <button class="mode-btn" data-mode="marker-transit">中转点</button>
+                    <button class="mode-btn" data-mode="marker-attack">进攻点</button>
+                    <button class="mode-btn" data-mode="marker-caution">注意点</button>
+                    <button class="mode-btn" data-mode="marker-defense">防御点</button>
+                </div>
+            </div>
+            <button class="mode-btn" data-mode="route-curve">曲速</button>
+            <button class="mode-btn" data-mode="route-normal">普通航线</button>
+            <button class="mode-btn" data-mode="text">文字</button>
+            <button class="mode-btn" data-mode="move">移动</button>
+        </div>
+        
+        <div class="color-picker">
+            <button class="color-btn active" data-color="#ffffff" data-color-id="self" style="background: #ffffff;"><span class="label">自己</span></button>
+            <button class="color-btn" data-color="#4a90d9" data-color-id="squad" style="background: #4a90d9;"><span class="label">小队</span></button>
+            <button class="color-btn" data-color="#00d4ff" data-color-id="collective" style="background: #00d4ff;"><span class="label">集合体</span></button>
+            <button class="color-btn" data-color="#4ecdc4" data-color-id="friendly" style="background: #4ecdc4;"><span class="label">友好</span></button>
+            <button class="color-btn" data-color="#ffd93d" data-color-id="enemy1" style="background: #ffd93d;"><span class="label">敌对1</span></button>
+            <button class="color-btn" data-color="#aa96da" data-color-id="enemy2" style="background: #aa96da;"><span class="label">敌对2</span></button>
+            <button class="color-btn" data-color="#ff6b6b" data-color-id="backup1" style="background: #ff6b6b;"><span class="label">备用1</span></button>
+            <button class="color-btn" data-color="#ffe66d" data-color-id="backup2" style="background: #ffe66d;"><span class="label">备用2</span></button>
+            <button class="color-btn" data-color="#95e1d3" data-color-id="backup3" style="background: #95e1d3;"><span class="label">备用3</span></button>
+        </div>
+        
+        <div class="coord-input">
+            <input type="text" id="coordInput" placeholder="(X,Y) 或 X,Y">
+            <button class="btn-secondary" id="jumpBtn">跳转</button>
+        </div>
+        
+        <button class="btn-secondary" id="exportBtn">导出</button>
+        <button class="btn-secondary" id="importBtn">导入</button>
+        <button class="btn-secondary" id="batchBtn">批量添加</button>
+        <button class="btn-secondary admin-only-btn" id="clearBtn">清除</button>
+        <button class="btn-primary" id="toggleInfoBtn">显示信息</button>
+        
+        <span class="info">左键点击放置 | 右键平移/操作 | 移动模式拖拽计划</span>
+        
+        <!-- Copy Room Code Button -->
+        <button class="btn-secondary" id="copyRoomBtn" style="background:rgba(0,212,255,0.15);border-color:rgba(0,212,255,0.3);color:#00d4ff;">复制房间码</button>
+        <button class="btn-secondary admin-only-btn" id="adminPanelBtn" style="background:rgba(123,47,247,0.15);border-color:rgba(123,47,247,0.3);color:#9b7bff;">管理</button>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer" style="display:none">
+        <canvas id="gameCanvas"></canvas>
+        <div class="selection-overlay" id="selectionOverlay"></div>
+    </div>
+
+    <div class="zoom-controls" id="zoomControls" style="display:none">
+        <button class="zoom-btn" id="zoomIn">+</button>
+        <button class="zoom-btn" id="zoomOut">−</button>
+        <button class="zoom-btn" id="zoomReset">1:1</button>
+    </div>
+
+    <div class="coords" id="coords" style="display:none">位置: (0, 0) | 缩放: 100%</div>
+    
+    <!-- ─── Collab Panel ─── -->
+    <div class="collab-panel" id="collabPanel" style="display:none">
+        <div class="collab-header">
+            <span class="collab-room" id="collabRoomCode" title="点击复制房间码">房间: ---</span>
+            <button class="collab-toggle" id="collabToggle">_</button>
+        </div>
+        <div class="collab-body" id="collabBody">
+            <div class="collab-my-role" id="collabMyRole">角色: --</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px;">在线用户:</div>
+            <div class="collab-users" id="collabUsers"></div>
+        </div>
+    </div>
+    
+    <!-- ─── Legend (from original) ─── -->
+    <div class="legend" id="legendPanel" style="display:none">
+        <div class="legend-header">筛选</div>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="space-station"> <span>空间站</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="building"> <span>建筑计划</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="plan-circle"> <span>计划圈</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="delegation-circle"> <span>委派圈</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="warp-circle"> <span>曲率圈</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="warp-route"> <span>曲速航线</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="normal-route"> <span>普通航线</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="marker"> <span>标记</span></label>
+        <label class="legend-checkbox"><input type="checkbox" checked data-filter="text"> <span>文字</span></label>
+        <div class="legend-divider"></div>
+        <div class="legend-header">按颜色筛选</div>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="self"> <span class="color-dot" style="background: #ffffff;"></span>自己</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="squad"> <span class="color-dot" style="background: #4a90d9;"></span>小队</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="collective"> <span class="color-dot" style="background: #00d4ff;"></span>集合体</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="friendly"> <span class="color-dot" style="background: #4ecdc4;"></span>友好</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="enemy1"> <span class="color-dot" style="background: #ffd93d;"></span>敌对1</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="enemy2"> <span class="color-dot" style="background: #aa96da;"></span>敌对2</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="backup1"> <span class="color-dot" style="background: #ff6b6b;"></span>备用1</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="backup2"> <span class="color-dot" style="background: #ffe66d;"></span>备用2</label>
+        <label class="legend-checkbox color-filter"><input type="checkbox" checked data-color-filter="backup3"> <span class="color-dot" style="background: #95e1d3;"></span>备用3</label>
+        <div class="legend-divider"></div>
+        <button class="legend-btn" id="showTypeFilter">计划类型</button>
+    </div>
+
+    <!-- ─── Original Modals ─── -->
+    <div class="modal" id="typeFilterModal">
+        <div class="modal-content" style="width: 450px; max-height: 70vh; overflow-y: auto;">
+            <h2>筛选计划类型</h2>
+            <div class="type-filter-grid" id="typeFilterGrid"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="typeFilterCancel">关闭</button>
+                <button class="btn-secondary" id="typeFilterSelectAll">全选</button>
+                <button class="btn-secondary" id="typeFilterClearAll">清空</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="batchModal">
+        <div class="modal-content" style="width: 500px;">
+            <h2>批量添加计划</h2>
+            <div class="batch-info">
+                <p>输入坐标列表，每行一个，格式：X,Y</p>
+                <pre>100,200
+300,400
+500,600</pre>
+            </div>
+            <div class="form-group"><label>坐标列表</label><textarea id="batchCoords" style="height:150px;"></textarea></div>
+            <div class="form-group"><label>计划类型</label><select id="batchPlanType"><option value="plan-circle">计划圈（10直径）</option><option value="delegation-circle">委派圈（30直径）</option><option value="warp-circle">曲率圈（20×20）</option><option value="marker">标记</option></select></div>
+            <div class="form-group"><label>标记/类型（选填）</label><input type="text" id="batchTypeName"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="batchCancel">取消</button>
+                <button class="btn-primary" id="batchPreview">预览</button>
+                <button class="btn-primary" id="batchConfirm">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="batchPreviewModal">
+        <div class="modal-content" style="width:600px;max-height:80vh;overflow-y:auto;">
+            <h2>预览批量添加</h2>
+            <p id="batchPreviewInfo"></p>
+            <div id="batchPreviewList"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="batchPreviewCancel">取消</button>
+                <button class="btn-primary" id="batchPreviewConfirm">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="planModal">
+        <div class="modal-content">
+            <h2 id="planModalTitle">计划信息</h2>
+            <input type="hidden" id="editPlanIndex"><input type="hidden" id="planMode">
+            <div class="form-group"><label>计划名称</label><input type="text" id="planName"></div>
+            <div class="form-group" id="typeGroup"><label>计划类型</label><select id="planType"></select></div>
+            <div class="form-group" id="directionGroup" style="display:none"><label>方向</label><select id="planDirection"><option value="0">→ 右</option><option value="1.5708">↓ 下</option><option value="3.14159">← 左</option><option value="4.71239">↑ 上</option></select></div>
+            <div class="form-group" id="sizeGroup" style="display:none"><label>尺寸（宽×高）</label><div style="display:flex;gap:10px;align-items:center;"><input type="number" id="planWidth" min="40" step="10" value="40" style="width:80px;"><span>×</span><input type="number" id="planHeight" min="40" step="10" value="40" style="width:80px;"></div></div>
+            <div class="form-group"><label>对接物（选填）</label><input type="text" id="planDocking"></div>
+            <div class="form-group"><label>备注（选填）</label><textarea id="planNote"></textarea></div>
+            <div class="modal-actions"><button class="btn-secondary" id="modalCancel">取消</button><button class="btn-primary" id="modalConfirm">确认</button></div>
+        </div>
+    </div>
+
+    <div class="modal" id="textModal">
+        <div class="modal-content" style="width:350px;">
+            <h2>文字标注</h2>
+            <div class="form-group"><label>文字内容</label><input type="text" id="textContent"></div>
+            <div class="form-group"><label>文字大小</label><input type="number" id="textSize" value="14" min="8" max="32"></div>
+            <div class="modal-actions"><button class="btn-secondary" id="textCancel">取消</button><button class="btn-primary" id="textConfirm">确认</button></div>
+        </div>
+    </div>
+
+    <div class="modal" id="markerModal">
+        <div class="modal-content" style="width:400px;">
+            <h2>选择标记类型</h2>
+            <div class="marker-grid" id="markerGrid"></div>
+            <div class="modal-actions"><button class="btn-secondary" id="markerCancel">取消</button></div>
+        </div>
+    </div>
+
+    <div class="modal" id="exportModal">
+        <div class="modal-content" style="width:500px;">
+            <h2>导出数据</h2>
+            <div class="form-group"><textarea id="exportData" style="height:200px;" readonly></textarea></div>
+            <div class="modal-actions"><button class="btn-secondary" id="exportCancel">关闭</button><button class="btn-primary" id="copyBtn">复制到剪贴板</button></div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+        <button id="ctxEdit">编辑</button>
+        <button id="ctxChangeColor">更改颜色</button>
+        <button id="ctxSwitchRoute">切换航线类型</button>
+        <button id="ctxCopyCoord">复制坐标</button>
+        <hr>
+        <button id="ctxDelete">删除</button>
+        <button id="ctxCancel">取消</button>
+    </div>
+
+    <div class="modal" id="colorModal">
+        <div class="modal-content" style="width:350px;">
+            <h2>选择颜色</h2>
+            <div class="color-picker" style="display:flex;justify-content:center;gap:10px;margin-bottom:20px;" id="colorPickerGrid">
+            </div>
+            <div class="modal-actions"><button class="btn-secondary" id="colorCancel">取消</button><button class="btn-primary" id="colorConfirm">确定</button></div>
+        </div>
+    </div>
+
+    <!-- ─── Admin Panel Modal ─── -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content" style="width:500px;max-height:80vh;overflow-y:auto;">
+            <h2>房间管理</h2>
+            <h3 style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:8px;">成员列表</h3>
+            <div id="adminMemberList"></div>
+            <div class="legend-divider"></div>
+            <h3 style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:8px;">权限设置</h3>
+            <div id="adminPerms"></div>
+            <div class="legend-divider"></div>
+            <h3 style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:8px;">数据管理</h3>
+            <div class="modal-actions" style="flex-direction:column;gap:8px;">
+                <button class="btn-secondary" id="adminExportBtn" style="width:100%">导出数据</button>
+                <button class="btn-secondary" id="adminImportBtn" style="width:100%">导入数据</button>
+                <button class="btn-secondary" id="adminClearBtn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,0.3);">清除全部数据</button>
+                <button class="btn-secondary" id="adminClose" style="width:100%">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="importFile" class="hidden-input" accept=".json">
+
+    <script>
+// ═══════════════════════════════════════════════════════════
+// Collab Map Editor - Full Integration
+// ═══════════════════════════════════════════════════════════
+
+const GRID_SIZE = 9000;
+const CELL_SIZE = 8;
+
+const COLORS = {
+    white: '#ffffff', blue: '#4a90d9', lightBlue: '#00d4ff',
+    cyan: '#4ecdc4', yellow: '#ffe66d', purple: '#9b59b6',
+    red: '#ff6b6b', green: '#2ecc71', orange: '#e67e22'
+};
+
+const COLOR_IDS = {
+    '#ffffff': 'self', '#4a90d9': 'squad', '#00d4ff': 'collective',
+    '#4ecdc4': 'friendly', '#ffd93d': 'enemy1', '#aa96da': 'enemy2',
+    '#ff6b6b': 'backup1', '#ffe66d': 'backup2', '#95e1d3': 'backup3'
+};
+
+const MARKER_TYPES = {
+    rally: { name: '集合点', emoji: '🏠' },
+    resource: { name: '资源点', emoji: '💎' },
+    transit: { name: '中转点', emoji: '🔄' },
+    attack: { name: '进攻点', emoji: '⚔️' },
+    caution: { name: '注意点', emoji: '⚠️' },
+    defense: { name: '防御点', emoji: '🛡️' }
+};
+
+const PLAN_TYPES = {
+    'space-station': {
+        name: '空间站计划', minSize: 40, snapToGrid: true, canOverlap: false, shape: 'square',
+        types: ['空间站']
+    },
+    'building': {
+        name: '建筑计划', sizes: [10, 20], snapToGrid: true, canOverlap: true, shape: 'square',
+        types10: ['海盗建筑', '玩家基地', '前哨站', '武装前哨站', '快速前哨站', '埃迪卡拉前哨站', 'FSV830前哨站', '曲率加速计划3级', '自动采集计划3级', '防卫警戒计划3级', '空域改造计划3级'],
+        types20: ['海盗建筑', '大型前哨站', '初级采矿平台', '中级采矿平台', '高级采矿平台'],
+        freePlacementTypes: ['曲率加速计划3级', '自动采集计划3级', '防卫警戒计划3级', '空域改造计划3级']
+    },
+    'building-10': {
+        name: '建筑计划10×10', snapToGrid: true, canOverlap: true, shape: 'square',
+        types10: ['海盗建筑', '玩家基地', '前哨站', '武装前哨站', '快速前哨站', '埃迪卡拉前哨站', 'FSV830前哨站', '曲率加速计划3级', '自动采集计划3级', '防卫警戒计划3级', '空域改造计划3级'],
+        freePlacementTypes: ['曲率加速计划3级', '自动采集计划3级', '防卫警戒计划3级', '空域改造计划3级']
+    },
+    'building-20': {
+        name: '建筑计划20×20', snapToGrid: true, canOverlap: true, shape: 'square',
+        types20: ['海盗建筑', '大型前哨站', '初级采矿平台', '中级采矿平台', '高级采矿平台'],
+        freePlacementTypes: ['曲率加速计划3级', '自动采集计划3级', '防卫警戒计划3级', '空域改造计划3级']
+    },
+    'plan-circle': {
+        name: '计划圈', diameter: 10, snapToGrid: false, canOverlap: true, shape: 'circle',
+        types: ['普通计划圈', '封锁计划圈', '曲率加速计划1级', '曲率加速计划2级', '自动采集计划1级', '自动采集计划2级', '防卫警戒计划1级', '防卫警戒计划2级', '空域改造计划1级', '空域改造计划2级']
+    },
+    'delegation-circle': {
+        name: '委派圈', diameter: 30, snapToGrid: false, canOverlap: true, shape: 'delegation',
+        types: ['委派圈']
+    },
+    'warp-circle': {
+        name: '曲率圈', snapToGrid: false, canOverlap: true, shape: 'warp',
+        types: ['曲率圈']
+    }
+};
+
+// ─── State ───
+let showPlanInfo = true;
+let filterOptions = {
+    'space-station': true, 'building': true, 'plan-circle': true,
+    'delegation-circle': true, 'warp-circle': true, 'warp-route': true,
+    'normal-route': true, 'marker': true, 'text': true
+};
+
+let planTypeFilters = {
+    '空间站': true, '海盗建筑': true, '玩家基地': true, '前哨站': true,
+    '武装前哨站': true, '快速前哨站': true, '埃迪卡拉前哨站': true,
+    'FSV830前哨站': true, '大型前哨站': true, '初级采矿平台': true,
+    '中级采矿平台': true, '高级采矿平台': true,
+    '曲率加速计划1级': true, '曲率加速计划2级': true, '曲率加速计划3级': true,
+    '自动采集计划1级': true, '自动采集计划2级': true, '自动采集计划3级': true,
+    '防卫警戒计划1级': true, '防卫警戒计划2级': true, '防卫警戒计划3级': true,
+    '空域改造计划1级': true, '空域改造计划2级': true, '空域改造计划3级': true,
+    '普通计划圈': true, '封锁计划圈': true, '委派圈': true, '曲率圈': true
+};
+
+let colorFilters = {
+    'self': true, 'squad': true, 'collective': true, 'friendly': true,
+    'enemy1': true, 'enemy2': true, 'backup1': true, 'backup2': true, 'backup3': true
+};
+
+let currentColor = '#ffffff';
+let currentMode = 'space-station';
+let plans = [];
+let routes = [];
+let texts = [];
+let markers = [];
+let zoom = 1;
+let offsetX = 0, offsetY = 0;
+let isDragging = false, isPanning = false, isMovingItem = false;
+let movingItem = null, movingStartCell = null;
+let selectionStart = null, selectionEnd = null;
+let panStart = { x: 0, y: 0 };
+let routeStart = null;
+let pendingPlan = null, pendingTextPos = null, pendingMarkerPos = null;
+let pendingWarpDirection = 0;
+let selectedMarkerType = 'rally';
+let selectedPlanCircleType = '普通计划圈';
+let pendingSpaceStationSize = null;
+let ctxMenuTarget = null;
+let editingPlanIndex = -1;
+let mousePreviewCell = null;
+
+// ─── Collab State ───
+let ws = null;
+let myUserId = null;
+let myUsername = null;
+let myRole = null; // 'admin' | 'member' | 'viewer'
+let myRoomId = null;
+let permissions = { memberCanPlace: true, memberCanEdit: true, memberCanDelete: true };
+let roomUsers = [];
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 2000;
+
+// ─── DOM Refs ───
+let canvas, ctx, selectionOverlay, canvasContainer, coordsDisplay;
+
+// ═══════════════════════════════════════════════════════════
+// Toast notifications
+// ═══════════════════════════════════════════════════════════
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Connection Status
+// ═══════════════════════════════════════════════════════════
+function setConnStatus(status) {
+    const el = document.getElementById('connStatus');
+    el.className = 'conn-status ' + status;
+    if (status === 'connected') {
+        el.textContent = '已连接';
+        setTimeout(() => { el.className = 'conn-status connected'; }, 2000);
+    } else if (status === 'reconnecting') {
+        el.textContent = '正在重新连接...';
+    } else {
+        el.textContent = '连接断开';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// WebSocket
+// ═══════════════════════════════════════════════════════════
+function connectWebSocket(roomId, password, username) {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + location.host;
+
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        setConnStatus('connected');
+        reconnectAttempts = 0;
+
+        // Send join message
+        ws.send(JSON.stringify({
+            type: 'join',
+            roomId: roomId,
+            password: password || '',
+            username: username
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            handleServerMessage(msg);
+        } catch (e) {
+            console.error('Invalid server message:', e);
+        }
+    };
+
+    ws.onclose = () => {
+        setConnStatus('disconnected');
+        attemptReconnect(roomId, password, username);
+    };
+
+    ws.onerror = () => {
+        // onclose will fire after this
+    };
+}
+
+function attemptReconnect(roomId, password, username) {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        showToast('无法重新连接，请刷新页面', 'error');
+        return;
+    }
+    reconnectAttempts++;
+    setConnStatus('reconnecting');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+        connectWebSocket(roomId, password, username);
+    }, RECONNECT_DELAY * Math.min(reconnectAttempts, 5));
+}
+
+function handleServerMessage(msg) {
+    switch (msg.type) {
+        case 'joined':
+            myUserId = msg.userId;
+            myUsername = msg.username;
+            myRole = msg.role;
+            permissions = msg.permissions || permissions;
+            roomUsers = msg.users || [];
+
+            // Load room data
+            if (msg.room) {
+                plans = msg.room.plans || [];
+                routes = msg.room.routes || [];
+                markers = msg.room.markers || [];
+                texts = msg.room.texts || [];
+            }
+
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('mainToolbar').style.display = 'flex';
+            document.getElementById('canvasContainer').style.display = 'block';
+            document.getElementById('zoomControls').style.display = 'flex';
+            document.getElementById('coords').style.display = 'block';
+            document.getElementById('legendPanel').style.display = 'block';
+            document.getElementById('collabPanel').style.display = 'block';
+
+            document.getElementById('collabRoomCode').textContent = '房间: ' + myRoomId;
+            updateCollabUI();
+            updateAdminButtons();
+            initCanvas();
+            break;
+
+        case 'error':
+            showToast(msg.message, 'error');
+            // If error during join, show login again
+            if (!myUserId) {
+                ws.close();
+            }
+            break;
+
+        case 'user_joined':
+            roomUsers.push({ userId: msg.userId, username: msg.username, role: msg.role });
+            updateCollabUI();
+            break;
+
+        case 'user_left':
+            roomUsers = roomUsers.filter(u => u.userId !== msg.userId);
+            updateCollabUI();
+            break;
+
+        case 'user_list':
+            roomUsers = msg.users || [];
+            updateCollabUI();
+            break;
+
+        case 'plan_placed':
+            plans.push(msg.plan);
+            drawGrid();
+            break;
+
+        case 'plan_edited':
+            if (msg.index >= 0 && msg.index < plans.length) {
+                plans[msg.index] = msg.plan;
+                drawGrid();
+            }
+            break;
+
+        case 'plan_deleted':
+            if (msg.index >= 0 && msg.index < plans.length) {
+                plans.splice(msg.index, 1);
+                drawGrid();
+            }
+            break;
+
+        case 'plan_moved':
+            if (msg.index >= 0 && msg.index < plans.length) {
+                plans[msg.index].x = msg.x;
+                plans[msg.index].y = msg.y;
+                drawGrid();
+            }
+            break;
+
+        case 'route_placed':
+            routes.push(msg.route);
+            drawGrid();
+            break;
+
+        case 'route_edited':
+            if (msg.index >= 0 && msg.index < routes.length) {
+                routes[msg.index] = msg.route;
+                drawGrid();
+            }
+            break;
+
+        case 'route_deleted':
+            if (msg.index >= 0 && msg.index < routes.length) {
+                routes.splice(msg.index, 1);
+                drawGrid();
+            }
+            break;
+
+        case 'marker_placed':
+            markers.push(msg.marker);
+            drawGrid();
+            break;
+
+        case 'marker_edited':
+            if (msg.index >= 0 && msg.index < markers.length) {
+                markers[msg.index] = msg.marker;
+                drawGrid();
+            }
+            break;
+
+        case 'marker_deleted':
+            if (msg.index >= 0 && msg.index < markers.length) {
+                markers.splice(msg.index, 1);
+                drawGrid();
+            }
+            break;
+
+        case 'marker_moved':
+            if (msg.index >= 0 && msg.index < markers.length) {
+                markers[msg.index].x = msg.x;
+                markers[msg.index].y = msg.y;
+                drawGrid();
+            }
+            break;
+
+        case 'text_placed':
+            texts.push(msg.text);
+            drawGrid();
+            break;
+
+        case 'text_edited':
+            if (msg.index >= 0 && msg.index < texts.length) {
+                texts[msg.index] = msg.text;
+                drawGrid();
+            }
+            break;
+
+        case 'text_deleted':
+            if (msg.index >= 0 && msg.index < texts.length) {
+                texts.splice(msg.index, 1);
+                drawGrid();
+            }
+            break;
+
+        case 'text_moved':
+            if (msg.index >= 0 && msg.index < texts.length) {
+                texts[msg.index].x = msg.x;
+                texts[msg.index].y = msg.y;
+                drawGrid();
+            }
+            break;
+
+        case 'clear_all':
+            plans = []; routes = []; markers = []; texts = [];
+            routeStart = null;
+            drawGrid();
+            break;
+
+        case 'import_data':
+            if (msg.plans) plans = msg.plans;
+            if (msg.routes) routes = msg.routes;
+            if (msg.markers) markers = msg.markers;
+            if (msg.texts) texts = msg.texts;
+            drawGrid();
+            break;
+
+        case 'role_changed':
+            const targetUser = roomUsers.find(u => u.userId === msg.targetUserId);
+            if (targetUser) targetUser.role = msg.role;
+            // Update our own role if it changed
+            if (msg.targetUserId === myUserId) {
+                myRole = msg.role;
+                updateCollabUI();
+                updateAdminButtons();
+            }
+            updateCollabUI();
+            break;
+
+        case 'permission_changed':
+            permissions[msg.key] = msg.value;
+            updateAdminPermsUI();
+            break;
+    }
+}
+
+function sendMessage(msg) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(msg));
+    } else {
+        showToast('未连接到服务器', 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Permission Helpers
+// ═══════════════════════════════════════════════════════════
+function checkPermission(action) {
+    if (myRole === 'viewer') return false;
+    if (myRole === 'admin') return true;
+    switch (action) {
+        case 'place': return permissions.memberCanPlace !== false;
+        case 'edit': return permissions.memberCanEdit !== false;
+        case 'delete': return permissions.memberCanDelete !== false;
+        default: return false;
+    }
+}
+
+function requirePermission(action) {
+    if (!checkPermission(action)) {
+        showToast('权限不足：你当前是 ' + myRole + ' 角色', 'error');
+        return false;
+    }
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Collab UI
+// ═══════════════════════════════════════════════════════════
+function updateCollabUI() {
+    document.getElementById('collabMyRole').textContent = '我的角色: ' + roleLabel(myRole);
+    document.getElementById('collabMyRole').style.color = roleColor(myRole);
+
+    const usersDiv = document.getElementById('collabUsers');
+    usersDiv.innerHTML = roomUsers.map(u => 
+        '<div class="collab-user">' +
+        '<span class="collab-user-dot"></span>' +
+        '<span>' + escHtml(u.username) + (u.userId === myUserId ? ' (我)' : '') + '</span>' +
+        '<span class="collab-role-tag ' + u.role + '">' + roleLabel(u.role) + '</span>' +
+        '</div>'
+    ).join('');
+}
+
+function roleLabel(role) {
+    return role === 'admin' ? '管理员' : role === 'member' ? '成员' : '观察者';
+}
+
+function roleColor(role) {
+    return role === 'admin' ? '#ff6b6b' : role === 'member' ? '#2ecc71' : 'rgba(255,255,255,0.5)';
+}
+
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function updateAdminButtons() {
+    const isAdmin = myRole === 'admin';
+    document.querySelectorAll('.admin-only-btn').forEach(btn => {
+        btn.style.display = isAdmin ? '' : 'none';
+    });
+}
+
+// ─── Admin Panel ───
+function openAdminPanel() {
+    updateAdminMemberList();
+    updateAdminPermsUI();
+    document.getElementById('adminModal').classList.add('show');
+}
+
+function updateAdminMemberList() {
+    const list = document.getElementById('adminMemberList');
+    list.innerHTML = roomUsers.map(u => {
+        const isSelf = u.userId === myUserId;
+        return '<div class="admin-member-row">' +
+            '<span class="name">' + escHtml(u.username) + (isSelf ? ' (我)' : '') + '</span>' +
+            (isSelf ? '<span style="font-size:10px;color:rgba(255,255,255,0.3);">自己</span>' :
+            '<select onchange="changeUserRole(\'' + u.userId + '\', this.value)" ' + (myRole !== 'admin' ? 'disabled' : '') + '>' +
+            '<option value="member"' + (u.role === 'member' ? ' selected' : '') + '>成员</option>' +
+            '<option value="viewer"' + (u.role === 'viewer' ? ' selected' : '') + '>观察者</option>' +
+            '</select>') +
+            '</div>';
+    }).join('');
+}
+
+function updateAdminPermsUI() {
+    document.getElementById('adminPerms').innerHTML = [
+        { key: 'memberCanPlace', label: '允许Member放置物品' },
+        { key: 'memberCanEdit', label: '允许Member编辑物品' },
+        { key: 'memberCanDelete', label: '允许Member删除物品' }
+    ].map(p => 
+        '<div class="perm-row">' +
+        '<label>' + p.label + '</label>' +
+        '<div class="perm-switch' + (permissions[p.key] ? ' on' : '') + '" onclick="togglePermission(\'' + p.key + '\')"></div>' +
+        '</div>'
+    ).join('');
+}
+
+function changeUserRole(userId, role) {
+    sendMessage({ type: 'set_role', targetUserId: userId, role });
+    showToast('角色已更新', 'info');
+}
+
+function togglePermission(key) {
+    const newVal = !permissions[key];
+    sendMessage({ type: 'set_permission', key, value: newVal });
+    showToast('权限已更新', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Login
+// ═══════════════════════════════════════════════════════════
+document.getElementById('tabJoin').addEventListener('click', () => {
+    document.getElementById('tabJoin').classList.add('active');
+    document.getElementById('tabCreate').classList.remove('active');
+    document.getElementById('joinForm').style.display = 'block';
+    document.getElementById('createForm').style.display = 'none';
+});
+
+document.getElementById('tabCreate').addEventListener('click', () => {
+    document.getElementById('tabCreate').classList.add('active');
+    document.getElementById('tabJoin').classList.remove('active');
+    document.getElementById('joinForm').style.display = 'none';
+    document.getElementById('createForm').style.display = 'block';
+});
+
+document.getElementById('btnJoin').addEventListener('click', () => {
+    const roomId = document.getElementById('joinRoomId').value.trim().toUpperCase();
+    const password = document.getElementById('joinPassword').value;
+    const username = document.getElementById('joinUsername').value.trim();
+
+    if (!roomId || roomId.length !== 6) return showToast('请输入6位房间码', 'error');
+    if (!username) return showToast('请输入昵称', 'error');
+
+    myRoomId = roomId;
+    connectWebSocket(roomId, password, username);
+});
+
+document.getElementById('btnCreate').addEventListener('click', async () => {
+    const roomName = document.getElementById('createRoomName').value.trim();
+    const password = document.getElementById('createPassword').value;
+    const username = document.getElementById('createUsername').value.trim();
+    const permPlace = document.getElementById('permPlace').checked;
+    const permEdit = document.getElementById('permEdit').checked;
+    const permDelete = document.getElementById('permDelete').checked;
+
+    if (!username) return showToast('请输入昵称', 'error');
+
+    try {
+        const resp = await fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: roomName, password })
+        });
+        const data = await resp.json();
+        if (data.roomId) {
+            myRoomId = data.roomId;
+            // Store permission presets - they'll be set after joining as admin
+            const presetPerms = { memberCanPlace: permPlace, memberCanEdit: permEdit, memberCanDelete: permDelete };
+            // Connect
+            connectWebSocket(data.roomId, password, username);
+
+            // After joining, apply permission presets
+            const checkAndApply = () => {
+                if (myRole === 'admin' && ws && ws.readyState === WebSocket.OPEN) {
+                    // Apply permission presets
+                    for (const [key, val] of Object.entries(presetPerms)) {
+                        ws.send(JSON.stringify({ type: 'set_permission', key, value: val }));
+                    }
+                    showToast('房间创建成功！房间码: ' + data.roomId, 'info');
+                } else if (!myUserId) {
+                    setTimeout(checkAndApply, 500);
+                }
+            };
+            setTimeout(checkAndApply, 500);
+        }
+    } catch (e) {
+        showToast('创建房间失败: ' + e.message, 'error');
+    }
+});
+
+// Enter key support
+document.getElementById('joinRoomId').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnJoin').click();
+});
+document.getElementById('joinPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnJoin').click();
+});
+document.getElementById('joinUsername').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnJoin').click();
+});
+document.getElementById('createUsername').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnCreate').click();
+});
+
+// Copy room code
+document.getElementById('copyRoomBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(myRoomId).then(() => {
+        showToast('房间码已复制: ' + myRoomId, 'info');
+    });
+});
+document.getElementById('collabRoomCode').addEventListener('click', () => {
+    navigator.clipboard.writeText(myRoomId).then(() => {
+        showToast('房间码已复制: ' + myRoomId, 'info');
+    });
+});
+
+// Collab panel toggle
+document.getElementById('collabToggle').addEventListener('click', () => {
+    document.getElementById('collabBody').classList.toggle('collapsed');
+});
+
+// Admin panel
+document.getElementById('adminPanelBtn').addEventListener('click', openAdminPanel);
+document.getElementById('adminClose').addEventListener('click', () => {
+    document.getElementById('adminModal').classList.remove('show');
+});
+
+document.getElementById('adminClearBtn').addEventListener('click', () => {
+    if (confirm('确定要清除所有数据吗？此操作会影响所有协作者！')) {
+        sendMessage({ type: 'clear_all' });
+        document.getElementById('adminModal').classList.remove('show');
+    }
+});
+
+document.getElementById('adminExportBtn').addEventListener('click', () => {
+    const data = { plans, routes, markers, texts, version: '2.0' };
+    document.getElementById('exportData').value = JSON.stringify(data, null, 2);
+    document.getElementById('exportModal').classList.add('show');
+    document.getElementById('adminModal').classList.remove('show');
+});
+
+document.getElementById('adminImportBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+    document.getElementById('adminModal').classList.remove('show');
+});
+
+// ═══════════════════════════════════════════════════════════
+// Map Editor Functions (mostly from original, modified for collab)
+// ═══════════════════════════════════════════════════════════
+
+function snapToGrid10x10(cell) {
+    return { x: Math.floor(cell.x / 10) * 10, y: Math.floor(cell.y / 10) * 10 };
+}
+
+function parseCoords(input) {
+    const match = input.match(/\(?\s*(\d+)\s*[,\s]\s*(\d+)\s*\)?/);
+    return match ? { x: parseInt(match[1]), y: parseInt(match[2]) } : null;
+}
+
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+    const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = lenSq !== 0 ? dot / lenSq : -1;
+    let xx, yy;
+    if (param < 0) { xx = x1; yy = y1; }
+    else if (param > 1) { xx = x2; yy = y2; }
+    else { xx = x1 + param * C; yy = y1 + param * D; }
+    return Math.sqrt(Math.pow(px - xx, 2) + Math.pow(py - yy, 2));
+}
+
+function getCellFromPosition(screenX, screenY, cellSizeScaled) {
+    return {
+        x: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((screenX - offsetX) / cellSizeScaled))),
+        y: Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((screenY - offsetY) / cellSizeScaled)))
+    };
+}
+
+function checkOverlap(newPlan, excludeIndex = -1) {
+    return plans.some((plan, index) => {
+        if (index === excludeIndex) return false;
+        if (newPlan.canOverlap) return false;
+        if (plan.shape === 'square' && newPlan.shape === 'square') {
+            const newIsStation = newPlan.width >= 40;
+            const planIsStation = plan.width >= 40;
+            if (newIsStation && planIsStation) {
+                return !(newPlan.x + newPlan.width <= plan.x ||
+                         newPlan.x >= plan.x + plan.width ||
+                         newPlan.y + newPlan.height <= plan.y ||
+                         newPlan.y >= plan.y + plan.height);
+            }
+            if (newIsStation || planIsStation) return false;
+            return !(newPlan.x + newPlan.width <= plan.x ||
+                     newPlan.x >= plan.x + plan.width ||
+                     newPlan.y + newPlan.height <= plan.y ||
+                     newPlan.y >= plan.y + plan.height);
+        }
+        return false;
+    });
+}
+
+// ─── Drawing ───
+let drawFrame = null;
+
+function drawGrid() {
+    if (drawFrame) cancelAnimationFrame(drawFrame);
+    drawFrame = requestAnimationFrame(() => {
+        if (!canvas) return;
+        const width = canvas.width || window.innerWidth;
+        const height = canvas.height || (window.innerHeight - 70);
+        canvas.width = width;
+        canvas.height = height;
+
+        const cellSizeScaled = CELL_SIZE * zoom;
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, width, height);
+
+        const startX = Math.floor(-offsetX / cellSizeScaled);
+        const startY = Math.floor(-offsetY / cellSizeScaled);
+        const endX = Math.ceil((-offsetX + width) / cellSizeScaled);
+        const endY = Math.ceil((-offsetY + height) / cellSizeScaled);
+        const visibleStartX = Math.max(0, startX - 1);
+        const visibleStartY = Math.max(0, startY - 1);
+        const visibleEndX = Math.min(GRID_SIZE, endX + 1);
+        const visibleEndY = Math.min(GRID_SIZE, endY + 1);
+
+        ctx.strokeStyle = '#2a2a4a';
+        ctx.lineWidth = 0.5;
+        if (cellSizeScaled > 1) {
+            for (let x = visibleStartX; x <= visibleEndX; x += Math.max(1, Math.floor(1 / zoom))) {
+                const screenX = x * cellSizeScaled + offsetX;
+                ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, height); ctx.stroke();
+            }
+            for (let y = visibleStartY; y <= visibleEndY; y += Math.max(1, Math.floor(1 / zoom))) {
+                const screenY = y * cellSizeScaled + offsetY;
+                ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(width, screenY); ctx.stroke();
+            }
+        }
+        if (cellSizeScaled > 5) drawGridLines10x10(cellSizeScaled, visibleStartX, visibleStartY, visibleEndX, visibleEndY);
+
+        drawPlans(cellSizeScaled);
+        drawRoutes(cellSizeScaled);
+        drawMarkers(cellSizeScaled);
+        drawTexts(cellSizeScaled);
+        drawPreview(cellSizeScaled);
+    });
+}
+
+function drawPreview(cellSizeScaled) {
+    if (mousePreviewCell && currentMode !== 'move') {
+        const cell = mousePreviewCell;
+        const screenX = cell.x * cellSizeScaled + offsetX;
+        const screenY = cell.y * cellSizeScaled + offsetY;
+
+        ctx.strokeStyle = currentColor;
+        ctx.fillStyle = currentColor + '40';
+        ctx.lineWidth = Math.max(2, 2 * zoom);
+        ctx.setLineDash([5, 5]);
+
+        if (currentMode === 'space-station' || pendingSpaceStationSize) {
+            const w = (pendingSpaceStationSize ? pendingSpaceStationSize.width : 40) * cellSizeScaled;
+            const h = (pendingSpaceStationSize ? pendingSpaceStationSize.height : 40) * cellSizeScaled;
+            ctx.fillRect(screenX, screenY, w, h);
+            ctx.strokeRect(screenX, screenY, w, h);
+        } else if (currentMode === 'building-20') {
+            const size = 20 * cellSizeScaled;
+            ctx.fillRect(screenX, screenY, size, size);
+            ctx.strokeRect(screenX, screenY, size, size);
+        } else if (currentMode === 'building-10' || currentMode === 'building') {
+            const size = 10 * cellSizeScaled;
+            ctx.fillRect(screenX, screenY, size, size);
+            ctx.strokeRect(screenX, screenY, size, size);
+        } else if (currentMode === 'plan-circle') {
+            const radius = 5 * cellSizeScaled;
+            ctx.beginPath(); ctx.arc(screenX, screenY, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        } else if (currentMode === 'delegation-circle') {
+            const radius = 15 * cellSizeScaled;
+            ctx.beginPath(); ctx.arc(screenX, screenY, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        } else if (currentMode === 'warp-circle') {
+            const squareSize = 20 * cellSizeScaled, triangleHeight = 10 * cellSizeScaled;
+            const direction = pendingWarpDirection || 0;
+            ctx.save();
+            ctx.translate(screenX + squareSize / 2, screenY + squareSize / 2);
+            ctx.rotate(direction);
+            ctx.translate(-squareSize / 2, -squareSize / 2);
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(squareSize, 0);
+            ctx.lineTo(squareSize + triangleHeight, squareSize / 2);
+            ctx.lineTo(squareSize, squareSize); ctx.lineTo(0, squareSize);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+        } else if (currentMode === 'marker' || currentMode.startsWith('marker-')) {
+            const size = 10 * cellSizeScaled;
+            ctx.save();
+            ctx.globalAlpha = 0.33;
+            ctx.fillStyle = currentColor; ctx.strokeStyle = currentColor;
+            drawMarkerIcon(selectedMarkerType, screenX + size/2, screenY + size/2, size/2);
+            ctx.restore();
+        }
+        ctx.setLineDash([]);
+    }
+
+    if (routeStart) {
+        const screenX = routeStart.x * cellSizeScaled + offsetX + cellSizeScaled / 2;
+        const screenY = routeStart.y * cellSizeScaled + offsetY + cellSizeScaled / 2;
+        ctx.fillStyle = currentColor;
+        ctx.beginPath(); ctx.arc(screenX, screenY, Math.max(4, 4 * zoom), 0, Math.PI * 2); ctx.fill();
+        ctx.font = Math.max(10, 12 * zoom) + 'px sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('起点', screenX + 8, screenY - 6);
+    }
+}
+
+function drawGridLines10x10(cellSizeScaled, startX, startY, endX, endY) {
+    if (cellSizeScaled < 0.5) return;
+    ctx.strokeStyle = '#3a3a5a';
+    ctx.lineWidth = Math.max(0.5, 1);
+    const gridSize = 10;
+
+    if (cellSizeScaled < 2) {
+        const bigGridSize = 100;
+        const startBigX = Math.floor(startX / bigGridSize) * bigGridSize;
+        const startBigY = Math.floor(startY / bigGridSize) * bigGridSize;
+        const endBigX = Math.ceil(endX / bigGridSize) * bigGridSize;
+        const endBigY = Math.ceil(endY / bigGridSize) * bigGridSize;
+        ctx.strokeStyle = '#4a4a6a'; ctx.lineWidth = 1;
+        for (let x = startBigX; x <= endBigX; x += bigGridSize) {
+            const screenX = x * cellSizeScaled + offsetX;
+            ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, canvas.height); ctx.stroke();
+        }
+        for (let y = startBigY; y <= endBigY; y += bigGridSize) {
+            const screenY = y * cellSizeScaled + offsetY;
+            ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(canvas.width, screenY); ctx.stroke();
+        }
+        return;
+    }
+
+    const startGridX = Math.floor(startX / gridSize) * gridSize;
+    const startGridY = Math.floor(startY / gridSize) * gridSize;
+    const endGridX = Math.ceil(endX / gridSize) * gridSize;
+    const endGridY = Math.ceil(endY / gridSize) * gridSize;
+    for (let x = startGridX; x <= endGridX; x += gridSize) {
+        const screenX = x * cellSizeScaled + offsetX;
+        ctx.beginPath(); ctx.moveTo(screenX, 0); ctx.lineTo(screenX, canvas.height); ctx.stroke();
+    }
+    for (let y = startGridY; y <= endGridY; y += gridSize) {
+        const screenY = y * cellSizeScaled + offsetY;
+        ctx.beginPath(); ctx.moveTo(0, screenY); ctx.lineTo(canvas.width, screenY); ctx.stroke();
+    }
+}
+
+function drawPlans(cellSizeScaled) {
+    const lowZoom = zoom < 0.3;
+
+    plans.forEach(plan => {
+        let planType = '';
+        if (plan.shape === 'square' && plan.width >= 40) planType = 'space-station';
+        else if (plan.shape === 'square') planType = 'building';
+        else if (plan.shape === 'delegation') planType = 'delegation-circle';
+        else if (plan.shape === 'warp') planType = 'warp-circle';
+        else if (plan.shape === 'circle') planType = 'plan-circle';
+
+        if (!filterOptions[planType]) return;
+        if (!planTypeFilters[plan.type]) return;
+        const colorId = COLOR_IDS[plan.color];
+        if (colorId && !colorFilters[colorId]) return;
+
+        const screenX = plan.x * cellSizeScaled + offsetX;
+        const screenY = plan.y * cellSizeScaled + offsetY;
+        ctx.fillStyle = plan.color + '30';
+
+        if (plan.shape === 'square') {
+            const w = plan.width * cellSizeScaled, h = plan.height * cellSizeScaled;
+            ctx.fillRect(screenX, screenY, w, h);
+            if (!lowZoom) {
+                ctx.strokeStyle = plan.color;
+                ctx.lineWidth = Math.max(1, 2 * zoom);
+                ctx.strokeRect(screenX, screenY, w, h);
+            }
+        } else if (plan.shape === 'delegation') {
+            const radius = (plan.radius || 15) * cellSizeScaled;
+            const centerX = screenX + radius, centerY = screenY + radius;
+            ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.fill();
+            if (!lowZoom) {
+                ctx.strokeStyle = plan.color;
+                ctx.lineWidth = Math.max(1, 2 * zoom);
+                ctx.stroke();
+            }
+        } else if (plan.shape === 'warp') {
+            const squareSize = 20 * cellSizeScaled, triangleHeight = 10 * cellSizeScaled;
+            const direction = plan.direction || 0;
+            ctx.save();
+            ctx.translate(screenX + squareSize / 2, screenY + squareSize / 2);
+            ctx.rotate(direction);
+            ctx.translate(-squareSize / 2, -squareSize / 2);
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(squareSize, 0);
+            ctx.lineTo(squareSize + triangleHeight, squareSize / 2);
+            ctx.lineTo(squareSize, squareSize); ctx.lineTo(0, squareSize);
+            ctx.closePath(); ctx.fill();
+            if (!lowZoom) { ctx.strokeStyle = plan.color; ctx.lineWidth = Math.max(1, 2 * zoom); ctx.stroke(); }
+            ctx.restore();
+        } else {
+            const radius = (plan.radius || 5) * cellSizeScaled;
+            const centerX = screenX + radius, centerY = screenY + radius;
+            if (plan.type === '封锁计划圈') {
+                ctx.fillStyle = plan.color + '40';
+                ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.fill();
+                if (!lowZoom) {
+                    ctx.save();
+                    ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.clip();
+                    ctx.strokeStyle = plan.color + '80';
+                    ctx.lineWidth = Math.max(1, 1 * zoom);
+                    const stripeWidth = Math.max(3, 3 * zoom);
+                    for (let i = -radius * 2; i < radius * 2; i += stripeWidth * 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + i, screenY);
+                        ctx.lineTo(screenX + i + radius * 2, screenY + radius * 2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                    ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = plan.color; ctx.lineWidth = Math.max(1, 2 * zoom); ctx.stroke();
+                }
+            } else {
+                ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.fill();
+                if (!lowZoom) { ctx.strokeStyle = plan.color; ctx.lineWidth = Math.max(1, 2 * zoom); ctx.stroke(); }
+            }
+        }
+
+        if (showPlanInfo && plan.name && zoom > 0.3) {
+            ctx.fillStyle = plan.color;
+            ctx.font = Math.max(10, 12 * zoom) + 'px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            if (plan.shape === 'square') {
+                const txtX = screenX + (plan.width * cellSizeScaled) / 2;
+                const txtY = screenY + (plan.height * cellSizeScaled) / 2;
+                ctx.fillText(plan.name, txtX, txtY);
+                if ((plan.type || plan.docking || plan.note) && zoom > 0.5) {
+                    ctx.font = Math.max(8, 10 * zoom) + 'px sans-serif';
+                    let line = 1;
+                    if (plan.type) ctx.fillText('类型: ' + plan.type, txtX, txtY + (14 * zoom) * line++);
+                    if (plan.docking) ctx.fillText('对接: ' + plan.docking, txtX, txtY + (14 * zoom) * line++);
+                    if (plan.note) {
+                        const noteText = plan.note.length > 20 ? plan.note.substring(0, 20) + '...' : plan.note;
+                        ctx.fillText('备注: ' + noteText, txtX, txtY + (14 * zoom) * line);
+                    }
+                }
+            } else {
+                const radius = (plan.radius || 5) * cellSizeScaled;
+                ctx.fillText(plan.name, screenX + radius, screenY + radius);
+                if (plan.type && zoom > 0.5) {
+                    ctx.font = Math.max(8, 10 * zoom) + 'px sans-serif';
+                    ctx.fillText('类型: ' + plan.type, screenX + radius, screenY + radius + (12 * zoom));
+                }
+            }
+        }
+    });
+}
+
+function drawRoutes(cellSizeScaled) {
+    const lowZoom = zoom < 0.3;
+    routes.forEach(route => {
+        if (route.type === 'curve' && !filterOptions['warp-route']) return;
+        if (route.type === 'normal' && !filterOptions['normal-route']) return;
+        const colorId = COLOR_IDS[route.color];
+        if (colorId && !colorFilters[colorId]) return;
+
+        const startScreenX = route.start.x * cellSizeScaled + offsetX + cellSizeScaled / 2;
+        const startScreenY = route.start.y * cellSizeScaled + offsetY + cellSizeScaled / 2;
+        const endScreenX = route.end.x * cellSizeScaled + offsetX + cellSizeScaled / 2;
+        const endScreenY = route.end.y * cellSizeScaled + offsetY + cellSizeScaled / 2;
+
+        ctx.strokeStyle = route.color;
+        ctx.lineWidth = Math.max(1, lowZoom ? 1 : 2 * zoom);
+        let arrowAngle = Math.atan2(endScreenY - startScreenY, endScreenX - startScreenX);
+
+        if (route.type === 'curve') {
+            ctx.beginPath();
+            const midX = (startScreenX + endScreenX) / 2, midY = (startScreenY + endScreenY) / 2;
+            const dist = Math.sqrt(Math.pow(endScreenX - startScreenX, 2) + Math.pow(endScreenY - startScreenY, 2));
+            const ctrlOffset = dist * 0.4;
+            const dx = endScreenX - startScreenX, dy = endScreenY - startScreenY;
+            const perpX = -dy / dist * ctrlOffset, perpY = dx / dist * ctrlOffset;
+            const ctrlX = midX + perpX, ctrlY = midY + perpY;
+            ctx.moveTo(startScreenX, startScreenY);
+            ctx.quadraticCurveTo(ctrlX, ctrlY, endScreenX, endScreenY);
+            ctx.stroke();
+            if (!lowZoom) arrowAngle = Math.atan2(endScreenY - ctrlY, endScreenX - ctrlX);
+        } else {
+            ctx.setLineDash([6 * zoom, 4 * zoom]);
+            ctx.beginPath(); ctx.moveTo(startScreenX, startScreenY); ctx.lineTo(endScreenX, endScreenY);
+            ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        if (!lowZoom) {
+            ctx.fillStyle = route.color;
+            ctx.beginPath(); ctx.arc(startScreenX, startScreenY, Math.max(3, 3 * zoom), 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath();
+            const arrowSize = Math.max(6, 6 * zoom);
+            ctx.moveTo(endScreenX - arrowSize * Math.cos(arrowAngle - Math.PI / 6), endScreenY - arrowSize * Math.sin(arrowAngle - Math.PI / 6));
+            ctx.lineTo(endScreenX, endScreenY);
+            ctx.lineTo(endScreenX - arrowSize * Math.cos(arrowAngle + Math.PI / 6), endScreenY - arrowSize * Math.sin(arrowAngle + Math.PI / 6));
+            ctx.stroke();
+        }
+    });
+}
+
+function drawMarkers(cellSizeScaled) {
+    if (!filterOptions['marker']) return;
+    const markerSize = 10 * cellSizeScaled;
+    markers.forEach(marker => {
+        const colorId = COLOR_IDS[marker.color];
+        if (colorId && !colorFilters[colorId]) return;
+        const screenX = marker.x * cellSizeScaled + offsetX;
+        const screenY = marker.y * cellSizeScaled + offsetY;
+        ctx.save();
+        ctx.globalAlpha = 0.33;
+        ctx.fillStyle = marker.color; ctx.strokeStyle = marker.color; ctx.lineWidth = 1.5;
+        drawMarkerIcon(marker.type, screenX + markerSize/2, screenY + markerSize/2, markerSize/2);
+        ctx.restore();
+    });
+}
+
+function drawMarkerIcon(type, cx, cy, size) {
+    const emoji = MARKER_TYPES[type]?.emoji || '📍';
+    ctx.font = (size * 2.5) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, cx, cy);
+}
+
+function drawTexts(cellSizeScaled) {
+    if (!filterOptions['text']) return;
+    texts.forEach(text => {
+        if (zoom < 0.3) return;
+        const screenX = text.x * cellSizeScaled + offsetX;
+        const screenY = text.y * cellSizeScaled + offsetY;
+        ctx.fillStyle = text.color;
+        ctx.font = (text.size * zoom) + 'px sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(text.content, screenX, screenY);
+    });
+}
+
+// ─── Marker Grid Init ───
+function initMarkerGrid() {
+    const grid = document.getElementById('markerGrid');
+    grid.innerHTML = '';
+    Object.entries(MARKER_TYPES).forEach(([key, marker]) => {
+        const item = document.createElement('div');
+        item.className = 'marker-item';
+        item.innerHTML = '<span class="marker-emoji">' + marker.emoji + '</span><span>' + marker.name + '</span>';
+        item.addEventListener('click', () => {
+            const newMarker = { x: pendingMarkerPos.x, y: pendingMarkerPos.y, type: key, color: currentColor, name: '' };
+            markers.push(newMarker);
+            document.getElementById('markerModal').classList.remove('show');
+            pendingMarkerPos = null;
+            sendMessage({ type: 'place_marker', marker: newMarker });
+            drawGrid();
+        });
+        grid.appendChild(item);
+    });
+}
+
+// ─── Type Filter Grid Init ───
+function initTypeFilterGrid() {
+    const grid = document.getElementById('typeFilterGrid');
+    const types = Object.keys(planTypeFilters);
+    grid.innerHTML = types.map(t =>
+        '<label class="legend-checkbox"><input type="checkbox" checked data-type-filter="' + escHtml(t) + '"> <span>' + escHtml(t) + '</span></label>'
+    ).join('');
+
+    grid.querySelectorAll('input').forEach(cb => {
+        cb.addEventListener('change', () => {
+            planTypeFilters[cb.dataset.typeFilter] = cb.checked;
+            drawGrid();
+        });
+    });
+}
+
+// ─── Item Finding ───
+function findItemAt(x, y) {
+    for (let i = plans.length - 1; i >= 0; i--) {
+        const plan = plans[i];
+        if (plan.shape === 'square') {
+            if (x >= plan.x && x < plan.x + plan.width && y >= plan.y && y < plan.y + plan.height) return { type: 'plan', index: i };
+        } else {
+            const cx = plan.x + (plan.radius || 5), cy = plan.y + (plan.radius || 5);
+            if (Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) <= (plan.radius || 5)) return { type: 'plan', index: i };
+        }
+    }
+    for (let i = routes.length - 1; i >= 0; i--) {
+        const r = routes[i];
+        if (pointToLineDistance(x, y, r.start.x, r.start.y, r.end.x, r.end.y) <= 3) return { type: 'route', index: i };
+    }
+    for (let i = texts.length - 1; i >= 0; i--) {
+        const t = texts[i];
+        if (x >= t.x && x < t.x + 100 && y >= t.y && y < t.y + t.size) return { type: 'text', index: i };
+    }
+    for (let i = markers.length - 1; i >= 0; i--) {
+        const m = markers[i];
+        if (x >= m.x && x < m.x + 3 && y >= m.y && y < m.y + 3) return { type: 'marker', index: i };
+    }
+    return { type: 'coord', cell: { x, y } };
+}
+
+function findMovableItemAt(x, y) {
+    for (let i = plans.length - 1; i >= 0; i--) {
+        const plan = plans[i];
+        if (plan.shape === 'square') {
+            if (x >= plan.x && x < plan.x + plan.width && y >= plan.y && y < plan.y + plan.height) return { type: 'plan', index: i };
+        } else {
+            const cx = plan.x + (plan.radius || 5), cy = plan.y + (plan.radius || 5);
+            if (Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) <= (plan.radius || 5) + 2) return { type: 'plan', index: i };
+        }
+    }
+    for (let i = routes.length - 1; i >= 0; i--) {
+        if (pointToLineDistance(x, y, routes[i].start.x, routes[i].start.y, routes[i].end.x, routes[i].end.y) <= 3) return { type: 'route', index: i };
+    }
+    for (let i = markers.length - 1; i >= 0; i--) {
+        if (Math.abs(x - markers[i].x) <= 5 && Math.abs(y - markers[i].y) <= 5) return { type: 'marker', index: i };
+    }
+    for (let i = texts.length - 1; i >= 0; i--) {
+        const t = texts[i];
+        if (x >= t.x && x < t.x + 20 && y >= t.y && y < t.y + 10) return { type: 'text', index: i };
+    }
+    return null;
+}
+
+// ─── Selection Overlay ───
+function updateSelection() {
+    if (!selectionStart || !selectionEnd) { selectionOverlay.style.display = 'none'; return; }
+    const cellSizeScaled = CELL_SIZE * zoom;
+    let overlayWidth, overlayHeight;
+    if (currentMode === 'building-20') { overlayWidth = 20 * cellSizeScaled; overlayHeight = 20 * cellSizeScaled; }
+    else if (currentMode === 'building-10' || currentMode === 'building') { overlayWidth = 10 * cellSizeScaled; overlayHeight = 10 * cellSizeScaled; }
+    else { overlayWidth = 10 * cellSizeScaled; overlayHeight = 10 * cellSizeScaled; }
+    const screenX = selectionStart.x * cellSizeScaled + offsetX;
+    const screenY = selectionStart.y * cellSizeScaled + offsetY;
+    selectionOverlay.style.left = screenX + 'px';
+    selectionOverlay.style.top = screenY + 'px';
+    selectionOverlay.style.width = overlayWidth + 'px';
+    selectionOverlay.style.height = overlayHeight + 'px';
+    selectionOverlay.style.display = 'block';
+    selectionOverlay.style.borderColor = '#00d4ff';
+    selectionOverlay.style.background = 'rgba(0, 212, 255, 0.1)';
+}
+
+// ─── Coords Display ───
+function updateCoords(mouseX, mouseY) {
+    const cellSizeScaled = CELL_SIZE * zoom;
+    const cellX = Math.floor((mouseX - offsetX) / cellSizeScaled);
+    const cellY = Math.floor((mouseY - offsetY) / cellSizeScaled);
+    const cell = { x: Math.max(0, Math.min(GRID_SIZE - 1, cellX)), y: Math.max(0, Math.min(GRID_SIZE - 1, cellY)) };
+    const modeNames = {
+        'space-station': '空间站', 'building': '建筑', 'building-10': '10×10建筑', 'building-20': '20×20建筑',
+        'plan-circle': '计划圈-' + selectedPlanCircleType, 'delegation-circle': '委派圈', 'warp-circle': '曲率圈',
+        'marker': '标记', 'marker-rally': '标记-集合点', 'marker-resource': '标记-资源点', 'marker-transit': '标记-中转点',
+        'marker-attack': '标记-进攻点', 'marker-caution': '标记-注意点', 'marker-defense': '标记-防御点',
+        'route-curve': '曲速', 'route-normal': '普通航线', 'text': '文字', 'move': '移动'
+    };
+    coordsDisplay.textContent = '位置: (' + cell.x + ', ' + cell.y + ') | 缩放: ' + Math.round(zoom * 100) + '% | 模式: ' + modeNames[currentMode];
+}
+
+// ─── Move Item ───
+function moveItem(item, dx, dy) {
+    switch (item.type) {
+        case 'plan': plans[item.index].x += dx; plans[item.index].y += dy; break;
+        case 'route': routes[item.index].start.x += dx; routes[item.index].start.y += dy; routes[item.index].end.x += dx; routes[item.index].end.y += dy; break;
+        case 'marker': markers[item.index].x += dx; markers[item.index].y += dy; break;
+        case 'text': texts[item.index].x += dx; texts[item.index].y += dy; break;
+    }
+}
+
+function syncMoveItem(item) {
+    // After moving, sync to server
+    switch (item.type) {
+        case 'plan': sendMessage({ type: 'move_plan', index: item.index, x: plans[item.index].x, y: plans[item.index].y }); break;
+        case 'marker': sendMessage({ type: 'move_marker', index: item.index, x: markers[item.index].x, y: markers[item.index].y }); break;
+        case 'text': sendMessage({ type: 'move_text', index: item.index, x: texts[item.index].x, y: texts[item.index].y }); break;
+    }
+}
+
+// ─── Context Menu ───
+function showContextMenuForItem(item, clientX, clientY) {
+    document.getElementById('ctxEdit').style.display = item?.type === 'plan' ? 'block' : 'none';
+    document.getElementById('ctxChangeColor').style.display = (item?.type === 'plan' || item?.type === 'route') ? 'block' : 'none';
+    document.getElementById('ctxSwitchRoute').style.display = item?.type === 'route' ? 'block' : 'none';
+    document.getElementById('ctxCopyCoord').style.display = 'block';
+    document.getElementById('ctxDelete').style.display = item?.type !== 'coord' ? 'block' : 'none';
+    document.getElementById('contextMenu').querySelector('hr').style.display = item?.type !== 'coord' ? 'block' : 'none';
+    document.getElementById('contextMenu').style.left = clientX + 'px';
+    document.getElementById('contextMenu').style.top = clientY + 'px';
+    document.getElementById('contextMenu').classList.add('show');
+    const closeMenu = () => {
+        document.getElementById('contextMenu').classList.remove('show');
+        document.removeEventListener('touchstart', closeMenu);
+        document.removeEventListener('click', closeMenu);
+    };
+    setTimeout(() => { document.addEventListener('touchstart', closeMenu, { once: true }); }, 100);
+}
+
+// ─── Modal Functions ───
+function openPlanModal(cell, size) {
+    if (!requirePermission('place')) return;
+    const gridCell = snapToGrid10x10(cell);
+    editingPlanIndex = -1;
+    pendingPlan = { cell: gridCell, size, mode: currentMode };
+    document.getElementById('planName').value = '';
+    document.getElementById('planDocking').value = '';
+    document.getElementById('planNote').value = '';
+    document.getElementById('editPlanIndex').value = '-1';
+    document.getElementById('planMode').value = currentMode;
+    document.getElementById('planModalTitle').textContent = '计划信息';
+    const typeGroup = document.getElementById('typeGroup');
+    const directionGroup = document.getElementById('directionGroup');
+    const sizeGroup = document.getElementById('sizeGroup');
+    const planTypeSelect = document.getElementById('planType');
+
+    if (currentMode === 'space-station') {
+        typeGroup.style.display = 'none'; directionGroup.style.display = 'none'; sizeGroup.style.display = 'block';
+        document.getElementById('planWidth').value = '40'; document.getElementById('planHeight').value = '40';
+        planTypeSelect.value = '空间站';
+    } else if (currentMode === 'delegation-circle' || currentMode === 'warp-circle') {
+        typeGroup.style.display = 'none'; directionGroup.style.display = currentMode === 'warp-circle' ? 'block' : 'none';
+        sizeGroup.style.display = 'none';
+        planTypeSelect.value = currentMode === 'delegation-circle' ? '委派圈' : '曲率圈';
+    } else {
+        typeGroup.style.display = 'block'; directionGroup.style.display = 'none'; sizeGroup.style.display = 'none';
+        updatePlanTypeOptions(currentMode);
+    }
+    document.getElementById('planModal').classList.add('show');
+}
+
+function openEditPlanModal(index) {
+    if (!requirePermission('edit')) return;
+    editingPlanIndex = index;
+    const plan = plans[index];
+    document.getElementById('planName').value = plan.name || '';
+    document.getElementById('planDocking').value = plan.docking || '';
+    document.getElementById('planNote').value = plan.note || '';
+    document.getElementById('editPlanIndex').value = index;
+    document.getElementById('planMode').value = plan.shape === 'delegation' ? 'delegation-circle' : (plan.shape === 'warp' ? 'warp-circle' : (plan.shape === 'square' && plan.width >= 40 ? 'space-station' : 'building'));
+    document.getElementById('planModalTitle').textContent = '编辑计划';
+
+    const typeGroup = document.getElementById('typeGroup');
+    const directionGroup = document.getElementById('directionGroup');
+    const sizeGroup = document.getElementById('sizeGroup');
+    const planTypeSelect = document.getElementById('planType');
+
+    if (plan.shape === 'square' && plan.width >= 40) {
+        typeGroup.style.display = 'none'; directionGroup.style.display = 'none'; sizeGroup.style.display = 'block';
+        document.getElementById('planWidth').value = plan.width || 40; document.getElementById('planHeight').value = plan.height || 40;
+        planTypeSelect.value = '空间站';
+    } else if (plan.shape === 'delegation') {
+        typeGroup.style.display = 'none'; directionGroup.style.display = 'none'; sizeGroup.style.display = 'none';
+        planTypeSelect.value = '委派圈';
+    } else if (plan.shape === 'warp') {
+        typeGroup.style.display = 'none'; directionGroup.style.display = 'block'; sizeGroup.style.display = 'none';
+        planTypeSelect.value = '曲率圈';
+        document.getElementById('planDirection').value = plan.direction || 0;
+    } else {
+        typeGroup.style.display = 'block'; directionGroup.style.display = 'none'; sizeGroup.style.display = 'none';
+        planTypeSelect.value = plan.type;
+    }
+    document.getElementById('planModal').classList.add('show');
+}
+
+function updatePlanTypeOptions(mode) {
+    const planTypeSelect = document.getElementById('planType');
+    planTypeSelect.innerHTML = '';
+    let types = [];
+    if (mode === 'building' || mode === 'building-10') types = PLAN_TYPES['building'].types10;
+    else if (mode === 'building-20') types = PLAN_TYPES['building'].types20;
+    else if (mode === 'plan-circle') types = PLAN_TYPES['plan-circle'].types;
+    else if (mode === 'building') types = [...PLAN_TYPES['building'].types10, ...PLAN_TYPES['building'].types20];
+    types.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type; option.textContent = type;
+        planTypeSelect.appendChild(option);
+    });
+}
+
+function getDefaultTypeName(mode) {
+    if (mode === 'plan-circle') return '普通计划圈';
+    if (mode === 'delegation-circle') return '委派圈';
+    if (mode === 'warp-circle') return '曲率圈';
+    return '';
+}
+
+function addPlanAtCoord(coord, mode, typeName) {
+    const planConfig = PLAN_TYPES[mode] || { canOverlap: true };
+    let plan = { x: coord.x, y: coord.y, color: currentColor, name: typeName || '', type: typeName || getDefaultTypeName(mode), docking: '', note: '', canOverlap: planConfig.canOverlap };
+    if (mode === 'plan-circle') { plan.shape = 'circle'; plan.radius = 5; plan.x = coord.x - plan.radius; plan.y = coord.y - plan.radius; }
+    else if (mode === 'delegation-circle') { plan.shape = 'delegation'; plan.radius = 15; plan.x = coord.x - plan.radius; plan.y = coord.y - plan.radius; }
+    else if (mode === 'warp-circle') { plan.shape = 'warp'; plan.direction = 0; }
+    else if (mode === 'marker') {
+        const m = { x: coord.x, y: coord.y, type: 'rally', color: currentColor, name: typeName || '' };
+        markers.push(m);
+        sendMessage({ type: 'place_marker', marker: m });
+        return;
+    }
+    plans.push(plan);
+    sendMessage({ type: 'place_plan', plan });
+}
+
+function confirmPlan() {
+    const name = document.getElementById('planName').value;
+    const docking = document.getElementById('planDocking').value;
+    const note = document.getElementById('planNote').value;
+    const editIndex = parseInt(document.getElementById('editPlanIndex').value);
+    const planMode = document.getElementById('planMode').value;
+
+    let type;
+    if (editIndex >= 0) {
+        const existingPlan = plans[editIndex];
+        if (existingPlan.shape === 'square' && existingPlan.width >= 40) type = '空间站';
+        else if (existingPlan.shape === 'delegation') type = '委派圈';
+        else if (existingPlan.shape === 'warp') type = '曲率圈';
+        else type = document.getElementById('planType').value;
+    } else {
+        if (planMode === 'space-station') type = '空间站';
+        else if (planMode === 'delegation-circle') type = '委派圈';
+        else if (planMode === 'warp-circle') type = '曲率圈';
+        else type = document.getElementById('planType').value;
+    }
+    if (!type) { alert('请选择计划类型'); return; }
+
+    if (editIndex >= 0) {
+        const plan = plans[editIndex];
+        plan.name = name; plan.type = type; plan.docking = docking; plan.note = note;
+        if (plan.shape === 'warp') plan.direction = parseFloat(document.getElementById('planDirection').value);
+        if (plan.shape === 'square' && plan.width >= 40) {
+            plan.width = Math.max(40, Math.round(parseInt(document.getElementById('planWidth').value || 40) / 10) * 10);
+            plan.height = Math.max(40, Math.round(parseInt(document.getElementById('planHeight').value || 40) / 10) * 10);
+        }
+        sendMessage({ type: 'edit_plan', index: editIndex, plan: JSON.parse(JSON.stringify(plan)) });
+    } else {
+        if (!requirePermission('place')) { document.getElementById('planModal').classList.remove('show'); return; }
+        const { cell, mode } = pendingPlan;
+        const planConfig = PLAN_TYPES[mode];
+        let plan = { x: cell.x, y: cell.y, color: currentColor, name, type, docking, note, canOverlap: planConfig.canOverlap };
+
+        if (mode === 'space-station') {
+            plan.shape = 'square';
+            plan.width = Math.max(40, Math.round(parseInt(document.getElementById('planWidth').value || 40) / 10) * 10);
+            plan.height = Math.max(40, Math.round(parseInt(document.getElementById('planHeight').value || 40) / 10) * 10);
+            pendingSpaceStationSize = { width: plan.width, height: plan.height };
+            pendingPlan = { cell, size: Math.max(plan.width, plan.height), mode };
+            document.getElementById('planModal').classList.remove('show');
+            pendingPlan = null; editingPlanIndex = -1;
+            drawGrid();
+            return;
+        } else if (mode === 'building' || mode === 'building-10' || mode === 'building-20') {
+            plan.shape = 'square';
+            plan.width = mode === 'building-20' ? 20 : 10;
+            plan.height = plan.width;
+        } else if (mode === 'plan-circle') {
+            plan.shape = 'circle'; plan.radius = 5;
+            plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius;
+        } else if (mode === 'delegation-circle') {
+            plan.shape = 'delegation'; plan.radius = 15;
+            plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius;
+        } else if (mode === 'warp-circle') {
+            plan.shape = 'warp';
+            plan.direction = parseFloat(document.getElementById('planDirection').value);
+        }
+
+        if (checkOverlap(plan)) { alert('该位置与其他计划重叠，请选择其他位置'); return; }
+        plans.push(plan);
+        sendMessage({ type: 'place_plan', plan: JSON.parse(JSON.stringify(plan)) });
+    }
+
+    document.getElementById('planModal').classList.remove('show');
+    pendingPlan = null; editingPlanIndex = -1;
+    drawGrid();
+}
+
+function openTextModal(cell) {
+    if (!requirePermission('place')) return;
+    pendingTextPos = cell;
+    document.getElementById('textContent').value = '';
+    document.getElementById('textSize').value = '14';
+    document.getElementById('textModal').classList.add('show');
+}
+
+// ─── Event Handlers (Mouse) ───
+function handleMouseDown(e) {
+    if (e.button === 2) { isPanning = true; panStart = { x: e.clientX, y: e.clientY }; return; }
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const cellSizeScaled = CELL_SIZE * zoom;
+    const cell = getCellFromPosition(x, y, cellSizeScaled);
+
+    if (currentMode === 'move') {
+        const item = findMovableItemAt(cell.x, cell.y);
+        if (item) { isMovingItem = true; movingItem = item; movingStartCell = cell; }
+        else { isPanning = true; panStart = { x: e.clientX, y: e.clientY }; }
+        return;
+    }
+
+    if (currentMode === 'text') { openTextModal(cell); return; }
+
+    if (currentMode === 'space-station') {
+        if (pendingSpaceStationSize) {
+            if (!requirePermission('place')) return;
+            const snappedCell = snapToGrid10x10(cell);
+            let plan = { x: snappedCell.x, y: snappedCell.y, color: currentColor, name: '', type: '空间站', docking: '', note: '', canOverlap: false, shape: 'square', width: pendingSpaceStationSize.width, height: pendingSpaceStationSize.height };
+            if (!checkOverlap(plan)) { plans.push(plan); sendMessage({ type: 'place_plan', plan: JSON.parse(JSON.stringify(plan)) }); }
+            pendingSpaceStationSize = null;
+            drawGrid();
+        } else { openPlanModal(cell, 40); }
+    } else if (currentMode === 'building' || currentMode === 'building-10' || currentMode === 'building-20') {
+        isDragging = true; selectionStart = cell; selectionEnd = cell; updateSelection();
+    } else if (currentMode === 'plan-circle' || currentMode === 'delegation-circle' || currentMode === 'warp-circle') {
+        if (!requirePermission('place')) return;
+        const planConfig = PLAN_TYPES[currentMode];
+        let plan = { x: cell.x, y: cell.y, color: currentColor, name: '', type: currentMode === 'plan-circle' ? selectedPlanCircleType : getDefaultTypeName(currentMode), docking: '', note: '', canOverlap: planConfig.canOverlap };
+        if (currentMode === 'plan-circle') { plan.shape = 'circle'; plan.radius = 5; plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius; }
+        else if (currentMode === 'delegation-circle') { plan.shape = 'delegation'; plan.radius = 15; plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius; }
+        else if (currentMode === 'warp-circle') { plan.shape = 'warp'; plan.direction = pendingWarpDirection || 0; pendingWarpDirection = 0; }
+        plans.push(plan);
+        sendMessage({ type: 'place_plan', plan: JSON.parse(JSON.stringify(plan)) });
+        drawGrid();
+    } else if (currentMode === 'marker' || currentMode.startsWith('marker-')) {
+        if (!requirePermission('place')) return;
+        const item = findMovableItemAt(cell.x, cell.y);
+        if (item && item.type === 'marker') {
+            markers.splice(item.index, 1);
+            sendMessage({ type: 'delete_marker', index: item.index });
+        } else {
+            const m = { x: cell.x, y: cell.y, type: selectedMarkerType, color: currentColor, name: '' };
+            markers.push(m);
+            sendMessage({ type: 'place_marker', marker: m });
+        }
+        drawGrid();
+    } else if (currentMode === 'route-curve' || currentMode === 'route-normal') {
+        if (!requirePermission('place')) return;
+        if (!routeStart) { routeStart = cell; }
+        else {
+            const r = { start: routeStart, end: cell, color: currentColor, type: currentMode === 'route-curve' ? 'curve' : 'normal' };
+            routes.push(r);
+            routeStart = null;
+            sendMessage({ type: 'place_route', route: r });
+            drawGrid();
+        }
+    }
+}
+
+function handleMouseMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    updateCoords(x, y);
+
+    if (isPanning) {
+        const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
+        offsetX += dx; offsetY += dy;
+        panStart = { x: e.clientX, y: e.clientY };
+        drawGrid(); updateSelection();
+        return;
+    }
+
+    if (isMovingItem && movingItem) {
+        const cellSizeScaled = CELL_SIZE * zoom;
+        const cell = getCellFromPosition(x, y, cellSizeScaled);
+        const dx = cell.x - movingStartCell.x, dy = cell.y - movingStartCell.y;
+        moveItem(movingItem, dx, dy);
+        movingStartCell = cell;
+        drawGrid();
+        return;
+    }
+
+    if (!isDragging && !isPanning) {
+        mousePreviewCell = getCellFromPosition(x, y, CELL_SIZE * zoom);
+        drawGrid();
+    }
+
+    if (!isDragging) return;
+
+    const cellSizeScaled = CELL_SIZE * zoom;
+    let cell = getCellFromPosition(x, y, cellSizeScaled);
+    if (PLAN_TYPES[currentMode]?.snapToGrid) cell = snapToGrid10x10(cell);
+    selectionEnd = cell;
+    updateSelection();
+}
+
+function handleMouseUp() {
+    if (isPanning) { isPanning = false; return; }
+    if (isMovingItem) {
+        if (movingItem) { drawGrid(); syncMoveItem(movingItem); }
+        isMovingItem = false; movingItem = null; movingStartCell = null;
+        return;
+    }
+
+    if (isDragging && selectionStart && selectionEnd) {
+        if (!requirePermission('place')) { isDragging = false; selectionStart = null; selectionEnd = null; updateSelection(); return; }
+        const minX = Math.min(selectionStart.x, selectionEnd.x), maxX = Math.max(selectionStart.x, selectionEnd.x);
+        const minY = Math.min(selectionStart.y, selectionEnd.y), maxY = Math.max(selectionStart.y, selectionEnd.y);
+        let width = maxX - minX + 1, height = maxY - minY + 1;
+        if (currentMode === 'space-station') {
+            width = Math.max(width, 40); height = Math.max(height, 40);
+            if (width % 10 !== 0) width = Math.ceil(width / 10) * 10;
+            if (height % 10 !== 0) height = Math.ceil(height / 10) * 10;
+        } else if (currentMode === 'building' || currentMode === 'building-10' || currentMode === 'building-20') {
+            width = currentMode === 'building-20' ? 20 : 10; height = width;
+        }
+        const finalCell = { x: minX, y: minY };
+        if (PLAN_TYPES[currentMode === 'space-station' ? 'space-station' : 'building']?.snapToGrid) {
+            finalCell.x = Math.floor(minX / 10) * 10; finalCell.y = Math.floor(minY / 10) * 10;
+        }
+        openPlanModal(finalCell, Math.max(width, height));
+    }
+
+    isDragging = false; selectionStart = null; selectionEnd = null; updateSelection();
+}
+
+function handleContextMenu(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const cell = getCellFromPosition(x, y, CELL_SIZE * zoom);
+    const item = findItemAt(cell.x, cell.y);
+    ctxMenuTarget = item;
+    document.getElementById('ctxEdit').style.display = item?.type === 'plan' ? 'block' : 'none';
+    document.getElementById('ctxChangeColor').style.display = (item?.type === 'plan' || item?.type === 'route') ? 'block' : 'none';
+    document.getElementById('ctxSwitchRoute').style.display = item?.type === 'route' ? 'block' : 'none';
+    document.getElementById('ctxCopyCoord').style.display = 'block';
+    document.getElementById('ctxDelete').style.display = item?.type !== 'coord' ? 'block' : 'none';
+    document.getElementById('contextMenu').querySelector('hr').style.display = item?.type !== 'coord' ? 'block' : 'none';
+    document.getElementById('contextMenu').style.left = e.clientX + 'px';
+    document.getElementById('contextMenu').style.top = e.clientY + 'px';
+    document.getElementById('contextMenu').classList.add('show');
+}
+
+// ─── Touch Events ───
+let touchStartPos = null, touchStartTime = 0, touchMoved = false;
+let lastTouchDistance = null, pinchCenter = null, longPressTimer = null;
+let isPinching = false, touchPanStart = null;
+const TAP_THRESHOLD = 10, TAP_MAX_TIME = 300, LONG_PRESS_TIME = 500;
+
+function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function handleTouchTap(touchPos) {
+    const rect = canvas.getBoundingClientRect();
+    const x = touchPos.x - rect.left, y = touchPos.y - rect.top;
+    const cellSizeScaled = CELL_SIZE * zoom;
+    const cell = getCellFromPosition(x, y, cellSizeScaled);
+
+    if (currentMode === 'text') { openTextModal(cell); }
+    else if (currentMode === 'space-station') {
+        if (pendingSpaceStationSize) {
+            if (!requirePermission('place')) return;
+            const snappedCell = snapToGrid10x10(cell);
+            let plan = { x: snappedCell.x, y: snappedCell.y, color: currentColor, name: '', type: '空间站', docking: '', note: '', canOverlap: false, shape: 'square', width: pendingSpaceStationSize.width, height: pendingSpaceStationSize.height };
+            if (!checkOverlap(plan)) { plans.push(plan); sendMessage({ type: 'place_plan', plan: JSON.parse(JSON.stringify(plan)) }); }
+            pendingSpaceStationSize = null;
+            drawGrid();
+        } else { openPlanModal(cell, 40); }
+    } else if (currentMode === 'building' || currentMode === 'building-10' || currentMode === 'building-20') {
+        openPlanModal(cell, currentMode === 'building-20' ? 20 : 10);
+    } else if (currentMode === 'plan-circle' || currentMode === 'delegation-circle' || currentMode === 'warp-circle') {
+        if (!requirePermission('place')) return;
+        const planConfig = PLAN_TYPES[currentMode];
+        let plan = { x: cell.x, y: cell.y, color: currentColor, name: '', type: currentMode === 'plan-circle' ? selectedPlanCircleType : getDefaultTypeName(currentMode), docking: '', note: '', canOverlap: planConfig.canOverlap };
+        if (currentMode === 'plan-circle') { plan.shape = 'circle'; plan.radius = 5; plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius; }
+        else if (currentMode === 'delegation-circle') { plan.shape = 'delegation'; plan.radius = 15; plan.x = cell.x - plan.radius; plan.y = cell.y - plan.radius; }
+        else if (currentMode === 'warp-circle') { plan.shape = 'warp'; plan.direction = pendingWarpDirection || 0; pendingWarpDirection = 0; }
+        plans.push(plan);
+        sendMessage({ type: 'place_plan', plan: JSON.parse(JSON.stringify(plan)) });
+        drawGrid();
+    } else if (currentMode === 'marker' || currentMode.startsWith('marker-')) {
+        if (!requirePermission('place')) return;
+        const item = findMovableItemAt(cell.x, cell.y);
+        if (item && item.type === 'marker') {
+            markers.splice(item.index, 1);
+            sendMessage({ type: 'delete_marker', index: item.index });
+        } else {
+            const m = { x: cell.x, y: cell.y, type: selectedMarkerType, color: currentColor, name: '' };
+            markers.push(m);
+            sendMessage({ type: 'place_marker', marker: m });
+        }
+        drawGrid();
+    } else if (currentMode === 'route-curve' || currentMode === 'route-normal') {
+        if (!requirePermission('place')) return;
+        if (!routeStart) { routeStart = cell; }
+        else {
+            const r = { start: routeStart, end: cell, color: currentColor, type: currentMode === 'route-curve' ? 'curve' : 'normal' };
+            routes.push(r);
+            routeStart = null;
+            sendMessage({ type: 'place_route', route: r });
+            drawGrid();
+        }
+    } else if (currentMode === 'move') {
+        const item = findMovableItemAt(cell.x, cell.y);
+        if (item) { isMovingItem = true; movingItem = item; movingStartCell = cell; }
+    }
+}
+
+function initTouchEvents() {
+    canvas.addEventListener('touchstart', (e) => {
+        touchStartTime = Date.now(); touchMoved = false;
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            touchStartPos = { x: t.clientX, y: t.clientY };
+            touchPanStart = { x: t.clientX, y: t.clientY };
+            lastTouchDistance = null; isPinching = false;
+            const touchPos = { x: t.clientX, y: t.clientY };
+            clearTimeout(longPressTimer);
+            longPressTimer = setTimeout(() => {
+                if (!touchMoved) {
+                    const rect = canvas.getBoundingClientRect();
+                    const cell = getCellFromPosition(touchPos.x - rect.left, touchPos.y - rect.top, CELL_SIZE * zoom);
+                    const item = findItemAt(cell.x, cell.y);
+                    ctxMenuTarget = item;
+                    showContextMenuForItem(item, touchPos.x, touchPos.y);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }
+            }, LONG_PRESS_TIME);
+        } else if (e.touches.length === 2) {
+            clearTimeout(longPressTimer); isPinching = true;
+            lastTouchDistance = getTouchDistance(e.touches);
+            const rect = canvas.getBoundingClientRect();
+            pinchCenter = { x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top };
+        }
+        e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (isPinching && e.touches.length === 2 && lastTouchDistance) {
+            const currentDistance = getTouchDistance(e.touches);
+            const delta = currentDistance / lastTouchDistance;
+            const newZoom = Math.max(0.05, Math.min(5, zoom * delta));
+            const rect = canvas.getBoundingClientRect();
+            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+            const worldX = (centerX - offsetX) / zoom, worldY = (centerY - offsetY) / zoom;
+            zoom = newZoom;
+            offsetX = centerX - worldX * zoom; offsetY = centerY - worldY * zoom;
+            lastTouchDistance = currentDistance;
+            drawGrid();
+        } else if (e.touches.length === 1 && touchStartPos && !isPinching) {
+            const dx = e.touches[0].clientX - touchStartPos.x, dy = e.touches[0].clientY - touchStartPos.y;
+            if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) { touchMoved = true; clearTimeout(longPressTimer); }
+            if (touchMoved) {
+                if (currentMode === 'move' && !isMovingItem) {
+                    if (touchPanStart) { offsetX += dx; offsetY += dy; }
+                } else if (currentMode === 'move' && isMovingItem && movingItem) {
+                    const cellSizeScaled = CELL_SIZE * zoom;
+                    const rect = canvas.getBoundingClientRect();
+                    const cell = getCellFromPosition(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top, cellSizeScaled);
+                    if (movingStartCell) {
+                        const ddx = cell.x - movingStartCell.x, ddy = cell.y - movingStartCell.y;
+                        moveItem(movingItem, ddx, ddy);
+                        movingStartCell = cell;
+                    }
+                } else if (currentMode === 'building' || currentMode === 'building-10' || currentMode === 'building-20' || currentMode === 'space-station') {
+                    if (!isDragging) {
+                        isDragging = true;
+                        const rect = canvas.getBoundingClientRect();
+                        const cellSizeScaled = CELL_SIZE * zoom;
+                        selectionStart = getCellFromPosition(touchStartPos.x - rect.left, touchStartPos.y - rect.top, cellSizeScaled);
+                        if (PLAN_TYPES[currentMode]?.snapToGrid) selectionStart = snapToGrid10x10(selectionStart);
+                    }
+                    const rect = canvas.getBoundingClientRect();
+                    const cellSizeScaled = CELL_SIZE * zoom;
+                    selectionEnd = getCellFromPosition(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top, cellSizeScaled);
+                    if (PLAN_TYPES[currentMode]?.snapToGrid) selectionEnd = snapToGrid10x10(selectionEnd);
+                    updateSelection();
+                } else {
+                    offsetX += dx; offsetY += dy;
+                }
+                if (touchPanStart) touchPanStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                drawGrid();
+            }
+        }
+        e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        clearTimeout(longPressTimer);
+        if (e.touches.length === 0) {
+            const touchDuration = Date.now() - touchStartTime;
+            if (isPinching) { isPinching = false; lastTouchDistance = null; touchStartPos = null; touchPanStart = null; return; }
+            if (isMovingItem) { if (movingItem) syncMoveItem(movingItem); isMovingItem = false; movingItem = null; movingStartCell = null; touchStartPos = null; touchPanStart = null; return; }
+            if (isDragging && selectionStart && selectionEnd) {
+                const minX = Math.min(selectionStart.x, selectionEnd.x), maxX = Math.max(selectionStart.x, selectionEnd.x);
+                const minY = Math.min(selectionStart.y, selectionEnd.y), maxY = Math.max(selectionStart.y, selectionEnd.y);
+                let width = maxX - minX + 1, height = maxY - minY + 1;
+                if (currentMode === 'space-station') { width = Math.max(width, 40); height = Math.max(height, 40); }
+                else if (currentMode === 'building-20') { width = 20; height = 20; }
+                else { width = 10; height = 10; }
+                const finalCell = { x: minX, y: minY };
+                if (PLAN_TYPES[currentMode]?.snapToGrid) { finalCell.x = Math.floor(minX / 10) * 10; finalCell.y = Math.floor(minY / 10) * 10; }
+                openPlanModal(finalCell, Math.max(width, height));
+                isDragging = false; selectionStart = null; selectionEnd = null; updateSelection();
+                touchStartPos = null; touchPanStart = null;
+                return;
+            }
+            isDragging = false; selectionStart = null; selectionEnd = null; updateSelection();
+            if (!touchMoved && touchDuration < TAP_MAX_TIME && touchStartPos) handleTouchTap(touchStartPos);
+            touchStartPos = null; touchPanStart = null; lastTouchDistance = null;
+        } else if (e.touches.length === 1) {
+            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            touchPanStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            isPinching = false; lastTouchDistance = null;
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        isDragging = false; isPinching = false; isMovingItem = false;
+        movingItem = null; movingStartCell = null;
+        selectionStart = null; selectionEnd = null;
+        touchStartPos = null; touchPanStart = null; lastTouchDistance = null;
+        updateSelection();
+    });
+}
+
+// ─── Canvas Init ───
+function resizeCanvas() {
+    if (!canvas || !canvasContainer) return;
+    const width = Math.max(canvasContainer.clientWidth, window.innerWidth);
+    const height = Math.max(canvasContainer.clientHeight, window.innerHeight - 70);
+    canvas.width = width;
+    canvas.height = height;
+    drawGrid();
+}
+
+function initCanvas() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    selectionOverlay = document.getElementById('selectionOverlay');
+    canvasContainer = document.getElementById('canvasContainer');
+    coordsDisplay = document.getElementById('coords');
+
+    resizeCanvas();
+    initMarkerGrid();
+    initTypeFilterGrid();
+    initEventListeners();
+    initTouchEvents();
+
+    window.addEventListener('resize', resizeCanvas);
+    drawGrid();
+}
+
+// ─── Event Listener Init ───
+function initEventListeners() {
+    // Dropdown toggle for touch devices
+    if (window.matchMedia('(pointer: coarse)').matches) {
+        document.querySelectorAll('.mode-dropdown .dropdown-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dropdown = btn.closest('.mode-dropdown');
+                const wasOpen = dropdown.classList.contains('open');
+                document.querySelectorAll('.mode-dropdown.open').forEach(d => d.classList.remove('open'));
+                if (!wasOpen) dropdown.classList.add('open');
+            });
+        });
+        document.addEventListener('click', () => { document.querySelectorAll('.mode-dropdown.open').forEach(d => d.classList.remove('open')); });
+    }
+
+    // Mode buttons
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.classList.contains('dropdown-btn')) return;
+            document.querySelectorAll('.mode-btn').forEach(b => { if (!b.classList.contains('dropdown-btn')) b.classList.remove('active'); });
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+            routeStart = null;
+            drawGrid();
+        });
+    });
+
+    // Dropdown items
+    document.querySelectorAll('.dropdown-content .mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            const parentDropdown = btn.closest('.mode-dropdown');
+            if (parentDropdown) {
+                const dropdownBtn = parentDropdown.querySelector('.dropdown-btn');
+                if (dropdownBtn) dropdownBtn.classList.add('active');
+            }
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+
+            if (currentMode.startsWith('marker-')) {
+                selectedMarkerType = currentMode.replace('marker-', '');
+            } else if (currentMode.startsWith('plan-circle-')) {
+                const planCircleModes = {
+                    'plan-circle-normal': '普通计划圈', 'plan-circle-blockade': '封锁计划圈',
+                    'plan-circle-warp1': '曲率加速计划1级', 'plan-circle-warp2': '曲率加速计划2级',
+                    'plan-circle-auto1': '自动采集计划1级', 'plan-circle-auto2': '自动采集计划2级',
+                    'plan-circle-defend1': '防卫警戒计划1级', 'plan-circle-defend2': '防卫警戒计划2级',
+                    'plan-circle-space1': '空域改造计划1级', 'plan-circle-space2': '空域改造计划2级'
+                };
+                selectedPlanCircleType = planCircleModes[currentMode] || '普通计划圈';
+                currentMode = 'plan-circle';
+            }
+            routeStart = null;
+            drawGrid();
+        });
+    });
+
+    // Color buttons
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentColor = btn.dataset.color;
+        });
+    });
+
+    // Color picker modal
+    const colorPickerGrid = document.getElementById('colorPickerGrid');
+    const colors = ['#ffffff', '#4a90d9', '#00d4ff', '#4ecdc4', '#ffd93d', '#aa96da', '#ff6b6b', '#ffe66d', '#95e1d3'];
+    colors.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'color-btn';
+        btn.dataset.color = c;
+        btn.style.cssText = 'background:' + c + ';width:40px;height:40px;';
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#colorPickerGrid .color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+        colorPickerGrid.appendChild(btn);
+    });
+
+    let selectedColor = null;
+    document.getElementById('colorConfirm').addEventListener('click', () => {
+        const active = document.querySelector('#colorPickerGrid .color-btn.active');
+        if (active && ctxMenuTarget) {
+            if (ctxMenuTarget.type === 'plan') {
+                plans[ctxMenuTarget.index].color = active.dataset.color;
+                sendMessage({ type: 'edit_plan', index: ctxMenuTarget.index, plan: JSON.parse(JSON.stringify(plans[ctxMenuTarget.index])) });
+            } else if (ctxMenuTarget.type === 'route') {
+                routes[ctxMenuTarget.index].color = active.dataset.color;
+                sendMessage({ type: 'edit_route', index: ctxMenuTarget.index, route: JSON.parse(JSON.stringify(routes[ctxMenuTarget.index])) });
+            }
+            drawGrid();
+        }
+        document.getElementById('colorModal').classList.remove('show');
+        ctxMenuTarget = null;
+        document.querySelectorAll('#colorPickerGrid .color-btn').forEach(b => b.classList.remove('active'));
+    });
+    document.getElementById('colorCancel').addEventListener('click', () => {
+        document.getElementById('colorModal').classList.remove('show');
+        ctxMenuTarget = null;
+        document.querySelectorAll('#colorPickerGrid .color-btn').forEach(b => b.classList.remove('active'));
+    });
+
+    // Toggle info
+    document.getElementById('toggleInfoBtn').addEventListener('click', () => {
+        showPlanInfo = !showPlanInfo;
+        document.getElementById('toggleInfoBtn').textContent = showPlanInfo ? '显示信息' : '隐藏信息';
+        drawGrid();
+    });
+
+    // Jump to coords
+    document.getElementById('jumpBtn').addEventListener('click', () => {
+        const input = document.getElementById('coordInput').value.trim();
+        const coords = parseCoords(input);
+        if (!coords || coords.x < 0 || coords.x >= 9000 || coords.y < 0 || coords.y >= 9000) {
+            showToast('请输入有效的坐标，格式如: (6645, 3280) 或 6645, 3280', 'error');
+            return;
+        }
+        const cellSizeScaled = CELL_SIZE * zoom;
+        offsetX = canvas.width / 2 - coords.x * cellSizeScaled;
+        offsetY = canvas.height / 2 - coords.y * cellSizeScaled;
+        drawGrid();
+    });
+    document.getElementById('coordInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('jumpBtn').click(); });
+
+    // Export
+    document.getElementById('exportBtn').addEventListener('click', () => {
+        const data = { plans, routes, texts, markers, version: '2.0' };
+        document.getElementById('exportData').value = JSON.stringify(data, null, 2);
+        document.getElementById('exportModal').classList.add('show');
+    });
+
+    // Import (admin only)
+    document.getElementById('importBtn').addEventListener('click', () => { document.getElementById('importFile').click(); });
+    document.getElementById('importFile').addEventListener('change', (e) => {
+        if (!requirePermission('edit')) { e.target.value = ''; return; }
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (myRole === 'admin') {
+                    sendMessage({
+                        type: 'import_data',
+                        plans: data.plans || plans,
+                        routes: data.routes || routes,
+                        markers: data.markers || markers,
+                        texts: data.texts || texts
+                    });
+                } else {
+                    if (data.plans) plans.forEach(() => {}); // just locally if member
+                    if (data.plans) { plans.length = 0; plans.push(...data.plans); }
+                    if (data.routes) { routes.length = 0; routes.push(...data.routes); }
+                    if (data.texts) { texts.length = 0; texts.push(...data.texts); }
+                    if (data.markers) { markers.length = 0; markers.push(...data.markers); }
+                    drawGrid();
+                }
+                showToast('导入成功！', 'info');
+            } catch (err) { showToast('导入失败，请确保文件格式正确', 'error'); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+    // Batch
+    document.getElementById('batchBtn').addEventListener('click', () => {
+        if (!requirePermission('place')) return;
+        document.getElementById('batchCoords').value = '';
+        document.getElementById('batchPlanType').value = 'plan-circle';
+        document.getElementById('batchTypeName').value = '';
+        document.getElementById('batchModal').classList.add('show');
+    });
+    document.getElementById('batchCancel').addEventListener('click', () => { document.getElementById('batchModal').classList.remove('show'); });
+
+    document.getElementById('batchPreview').addEventListener('click', () => {
+        const coordsText = document.getElementById('batchCoords').value.trim();
+        if (!coordsText) { showToast('请输入坐标列表', 'error'); return; }
+        const planType = document.getElementById('batchPlanType').value;
+        const typeName = document.getElementById('batchTypeName').value.trim();
+        const coords = coordsText.split('\n').map(line => parseCoords(line)).filter(c => c);
+        if (coords.length === 0) { showToast('没有有效的坐标', 'error'); return; }
+        document.getElementById('batchPreviewInfo').textContent = '将添加 ' + coords.length + ' 个项目';
+        const previewList = document.getElementById('batchPreviewList');
+        previewList.innerHTML = '';
+        coords.slice(0, 20).forEach(coord => {
+            const item = document.createElement('div');
+            item.className = 'batch-preview-item';
+            item.innerHTML = '<span class="color-indicator" style="background:' + currentColor + ';"></span><span>(' + coord.x + ', ' + coord.y + ')</span>';
+            previewList.appendChild(item);
+        });
+        if (coords.length > 20) {
+            const more = document.createElement('div');
+            more.textContent = '... 还有 ' + (coords.length - 20) + ' 个';
+            more.style.cssText = 'text-align:center;color:rgba(255,255,255,0.5);';
+            previewList.appendChild(more);
+        }
+        document.getElementById('batchModal').classList.remove('show');
+        document.getElementById('batchPreviewModal').classList.add('show');
+        document.getElementById('batchPreviewConfirm').onclick = () => {
+            coords.forEach(coord => addPlanAtCoord(coord, planType, typeName));
+            document.getElementById('batchPreviewModal').classList.remove('show');
+            drawGrid();
+            showToast('已添加 ' + coords.length + ' 个项目', 'info');
+        };
+    });
+    document.getElementById('batchConfirm').addEventListener('click', () => {
+        const coordsText = document.getElementById('batchCoords').value.trim();
+        if (!coordsText) { showToast('请输入坐标列表', 'error'); return; }
+        const planType = document.getElementById('batchPlanType').value;
+        const typeName = document.getElementById('batchTypeName').value.trim();
+        const coords = coordsText.split('\n').map(line => parseCoords(line)).filter(c => c);
+        if (coords.length === 0) { showToast('没有有效的坐标', 'error'); return; }
+        coords.forEach(coord => addPlanAtCoord(coord, planType, typeName));
+        document.getElementById('batchModal').classList.remove('show');
+        drawGrid();
+        showToast('已添加 ' + coords.length + ' 个项目', 'info');
+    });
+    document.getElementById('batchPreviewCancel').addEventListener('click', () => { document.getElementById('batchPreviewModal').classList.remove('show'); });
+
+    // Clear (admin only)
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        if (myRole !== 'admin') { showToast('权限不足：仅管理员可清除全部数据', 'error'); return; }
+        if (confirm('确定要清除所有内容吗？此操作会影响所有协作者！')) {
+            sendMessage({ type: 'clear_all' });
+        }
+    });
+
+    // Copy export
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(document.getElementById('exportData').value);
+        showToast('已复制到剪贴板！', 'info');
+    });
+    document.getElementById('exportCancel').addEventListener('click', () => { document.getElementById('exportModal').classList.remove('show'); });
+
+    // Context menu actions
+    document.getElementById('ctxEdit').addEventListener('click', () => {
+        if (ctxMenuTarget && ctxMenuTarget.type === 'plan') openEditPlanModal(ctxMenuTarget.index);
+    });
+    document.getElementById('ctxChangeColor').addEventListener('click', () => {
+        document.getElementById('contextMenu').classList.remove('show');
+        document.getElementById('colorModal').classList.add('show');
+    });
+    document.getElementById('ctxSwitchRoute').addEventListener('click', () => {
+        if (ctxMenuTarget && ctxMenuTarget.type === 'route') {
+            const route = routes[ctxMenuTarget.index];
+            route.type = route.type === 'curve' ? 'normal' : 'curve';
+            sendMessage({ type: 'edit_route', index: ctxMenuTarget.index, route: JSON.parse(JSON.stringify(route)) });
+            document.getElementById('contextMenu').classList.remove('show');
+            ctxMenuTarget = null;
+            drawGrid();
+        }
+    });
+    document.getElementById('ctxCopyCoord').addEventListener('click', () => {
+        const coordStr = ctxMenuTarget.type === 'coord' ? '(' + ctxMenuTarget.cell.x + ', ' + ctxMenuTarget.cell.y + ')' : '';
+        if (coordStr) navigator.clipboard.writeText(coordStr).then(() => showToast('坐标已复制: ' + coordStr, 'info'));
+    });
+    document.getElementById('ctxDelete').addEventListener('click', () => {
+        if (!requirePermission('delete')) { document.getElementById('contextMenu').classList.remove('show'); return; }
+        if (ctxMenuTarget && ctxMenuTarget.type !== 'coord') {
+            switch (ctxMenuTarget.type) {
+                case 'plan': sendMessage({ type: 'delete_plan', index: ctxMenuTarget.index }); plans.splice(ctxMenuTarget.index, 1); break;
+                case 'route': sendMessage({ type: 'delete_route', index: ctxMenuTarget.index }); routes.splice(ctxMenuTarget.index, 1); break;
+                case 'text': sendMessage({ type: 'delete_text', index: ctxMenuTarget.index }); texts.splice(ctxMenuTarget.index, 1); break;
+                case 'marker': sendMessage({ type: 'delete_marker', index: ctxMenuTarget.index }); markers.splice(ctxMenuTarget.index, 1); break;
+            }
+        }
+        document.getElementById('contextMenu').classList.remove('show');
+        ctxMenuTarget = null;
+        drawGrid();
+    });
+    document.getElementById('ctxCancel').addEventListener('click', () => { document.getElementById('contextMenu').classList.remove('show'); });
+
+    // Legend filters
+    document.querySelectorAll('.legend-checkbox input[data-filter]').forEach(cb => {
+        cb.addEventListener('change', (e) => { filterOptions[e.target.dataset.filter] = e.target.checked; drawGrid(); });
+    });
+    document.querySelectorAll('.legend-checkbox input[data-color-filter]').forEach(cb => {
+        cb.addEventListener('change', (e) => { colorFilters[e.target.dataset.colorFilter] = e.target.checked; drawGrid(); });
+    });
+
+    // Type filter
+    document.getElementById('showTypeFilter').addEventListener('click', () => { document.getElementById('typeFilterModal').classList.add('show'); });
+    document.getElementById('typeFilterCancel').addEventListener('click', () => { document.getElementById('typeFilterModal').classList.remove('show'); });
+    document.getElementById('typeFilterSelectAll').addEventListener('click', () => {
+        for (const key in planTypeFilters) planTypeFilters[key] = true;
+        document.getElementById('typeFilterModal').classList.remove('show');
+        drawGrid();
+    });
+    document.getElementById('typeFilterClearAll').addEventListener('click', () => {
+        for (const key in planTypeFilters) planTypeFilters[key] = false;
+        document.getElementById('typeFilterModal').classList.remove('show');
+        drawGrid();
+    });
+
+    // Modal confirms
+    document.getElementById('modalConfirm').addEventListener('click', confirmPlan);
+    document.getElementById('modalCancel').addEventListener('click', () => {
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+        pendingPlan = null; editingPlanIndex = -1;
+    });
+    document.getElementById('textConfirm').addEventListener('click', () => {
+        const content = document.getElementById('textContent').value.trim();
+        const size = parseInt(document.getElementById('textSize').value);
+        if (!content) { showToast('请输入文字内容', 'error'); return; }
+        const t = { x: pendingTextPos.x, y: pendingTextPos.y, content, color: currentColor, size };
+        texts.push(t);
+        document.getElementById('textModal').classList.remove('show');
+        pendingTextPos = null;
+        sendMessage({ type: 'place_text', text: t });
+        drawGrid();
+    });
+    document.getElementById('textCancel').addEventListener('click', () => {
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+        pendingTextPos = null;
+    });
+    document.getElementById('markerCancel').addEventListener('click', () => {
+        document.getElementById('markerModal').classList.remove('show');
+        pendingMarkerPos = null;
+    });
+
+    // Zoom controls
+    document.getElementById('zoomIn').addEventListener('click', () => { zoom = Math.min(5, zoom * 1.2); drawGrid(); });
+    document.getElementById('zoomOut').addEventListener('click', () => { zoom = Math.max(0.05, zoom / 1.2); drawGrid(); });
+    document.getElementById('zoomReset').addEventListener('click', () => { zoom = 1; offsetX = 0; offsetY = 0; drawGrid(); });
+
+    // Canvas mouse events
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.max(0.05, Math.min(5, zoom * delta));
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+        const worldX = (mouseX - offsetX) / zoom, worldY = (mouseY - offsetY) / zoom;
+        zoom = newZoom;
+        offsetX = mouseX - worldX * zoom; offsetY = mouseY - worldY * zoom;
+        drawGrid();
+        updateCoords(mouseX, mouseY);
+    });
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('contextmenu', handleContextMenu);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            if (currentMode === 'warp-circle') { pendingWarpDirection = (pendingWarpDirection || 0) + Math.PI / 12; drawGrid(); }
+            else if (ctxMenuTarget && ctxMenuTarget.type === 'plan') {
+                const plan = plans[ctxMenuTarget.index];
+                if (plan.shape === 'warp') { plan.direction = (plan.direction || 0) + Math.PI / 12; drawGrid(); }
+            }
+        }
+    });
+}
+    </script>
+</body>
+</html>
